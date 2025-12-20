@@ -88,7 +88,7 @@ export function useActivityTracking(): UseActivityTrackingResult {
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
   const lastLocation = useRef<{ latitude: number; longitude: number } | null>(null);
   const startTime = useRef<number | null>(null);
-  const activeTimeInterval = useRef<NodeJS.Timeout | null>(null);
+  const activeTimeInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const updateActiveMinutes = useCallback(() => {
     if (startTime.current) {
