@@ -1,16 +1,35 @@
 import React from 'react';
-import { View, Image, Text, StyleSheet, ImageSourcePropType } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+import VRMCharacter, { VRMExpression } from './VRMCharacter';
 
-export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' | 'thinking';
+export type KaoriExpression = VRMExpression;
 
 interface CharacterDisplayProps {
   expression?: KaoriExpression;
   size?: 'small' | 'medium' | 'large';
   showName?: boolean;
+  timeOfDay?: 'morning' | 'afternoon' | 'night';
 }
 
-// Placeholder colors for each expression (used when images are not available)
-const expressionColors: Record<KaoriExpression, string> = {
+// サイズ別の高さ
+const SIZE_HEIGHT: Record<string, number> = {
+  small: 150,
+  medium: 250,
+  large: 350,
+};
+
+// フォールバック用の絵文字
+const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
+  neutral: '(._. )',
+  happy: '(*^_^*)',
+  shy: '(*/ω＼*)',
+  surprised: '(°o°)',
+  sad: '(；_;)',
+  thinking: '(・_・?)',
+};
+
+// フォールバック用の背景色
+const EXPRESSION_BG: Record<KaoriExpression, string> = {
   neutral: '#e3f2fd',
   happy: '#fff9c4',
   shy: '#fce4ec',
@@ -19,65 +38,62 @@ const expressionColors: Record<KaoriExpression, string> = {
   thinking: '#f3e5f5',
 };
 
-// Expression descriptions for placeholder
-const expressionDescriptions: Record<KaoriExpression, string> = {
-  neutral: '...',
-  happy: '*smile*',
-  shy: '*blush*',
-  surprised: '!?',
-  sad: '...',
-  thinking: '...',
+// 時間帯別背景色
+const TIME_BG: Record<string, string> = {
+  morning: '#E8F4FD',
+  afternoon: '#FFF8E7',
+  night: '#1a1a2e',
 };
 
 export default function CharacterDisplay({
   expression = 'neutral',
   size = 'medium',
   showName = true,
+  timeOfDay = 'afternoon',
 }: CharacterDisplayProps) {
-  const sizeStyles = {
-    small: { width: 100, height: 140 },
-    medium: { width: 150, height: 200 },
-    large: { width: 200, height: 280 },
-  };
+  const height = SIZE_HEIGHT[size];
 
-  const dimensions = sizeStyles[size];
+  // ネイティブではVRMを試行（フォールバック内蔵）
+  const useVRM = Platform.OS !== 'web';
 
-  // TODO: Replace with actual images when available
-  // const expressionImages: Record<KaoriExpression, ImageSourcePropType> = {
-  //   neutral: require('../../assets/images/kaori/neutral.png'),
-  //   happy: require('../../assets/images/kaori/happy.png'),
-  //   shy: require('../../assets/images/kaori/shy.png'),
-  //   sad: require('../../assets/images/kaori/sad.png'),
-  // };
+  if (useVRM) {
+    return (
+      <View style={styles.container}>
+        <VRMCharacter
+          expression={expression}
+          timeOfDay={timeOfDay}
+          style={{ height }}
+        />
+        {showName && (
+          <View style={[
+            styles.nameTag,
+            timeOfDay === 'night' && styles.nameTagNight
+          ]}>
+            <Text style={styles.characterName}>雪村 かおり</Text>
+            <Text style={styles.characterInfo}>17歳 / 小樽出身</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // Webフォールバック
+  const bgColor = timeOfDay ? TIME_BG[timeOfDay] : EXPRESSION_BG[expression];
+  const isNight = timeOfDay === 'night';
 
   return (
     <View style={styles.container}>
       <View
         style={[
-          styles.characterPlaceholder,
-          {
-            width: dimensions.width,
-            height: dimensions.height,
-            backgroundColor: expressionColors[expression],
-          }
+          styles.fallbackContainer,
+          { height, backgroundColor: bgColor },
         ]}
       >
-        {/* Placeholder content - replace with Image when assets are available */}
-        <View style={styles.placeholderContent}>
-          <View style={styles.faceArea}>
-            <Text style={styles.expressionEmoji}>
-              {expression === 'happy' ? '(*^_^*)' :
-               expression === 'shy' ? '(*/w\\*)' :
-               expression === 'surprised' ? '(°o°)' :
-               expression === 'sad' ? '(;_;)' :
-               expression === 'thinking' ? '(._.)?' : '(._.)'}
-            </Text>
-          </View>
-          <Text style={styles.expressionText}>{expressionDescriptions[expression]}</Text>
-        </View>
-
+        <Text style={[styles.expressionEmoji, isNight && styles.emojiNight]}>
+          {EXPRESSION_EMOJI[expression]}
+        </Text>
         {showName && (
-          <View style={styles.nameTag}>
+          <View style={[styles.nameTagFallback, isNight && styles.nameTagNight]}>
             <Text style={styles.characterName}>雪村 かおり</Text>
             <Text style={styles.characterInfo}>17歳 / 小樽出身</Text>
           </View>
@@ -90,41 +106,47 @@ export default function CharacterDisplay({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    width: '100%',
   },
-  characterPlaceholder: {
-    borderRadius: 10,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  placeholderContent: {
-    flex: 1,
+  fallbackContainer: {
+    width: '100%',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  faceArea: {
-    marginBottom: 10,
+    position: 'relative',
   },
   expressionEmoji: {
-    fontSize: 24,
-    color: '#666',
+    fontSize: 48,
+    color: '#555',
   },
-  expressionText: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
+  emojiNight: {
+    color: '#ccc',
   },
   nameTag: {
+    position: 'absolute',
+    bottom: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  nameTagFallback: {
+    position: 'absolute',
+    bottom: 15,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 8,
-    padding: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     alignItems: 'center',
-    width: '100%',
+  },
+  nameTagNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
   },
   characterName: {
     fontSize: 14,
