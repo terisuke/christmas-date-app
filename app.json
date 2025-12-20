@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "christmas-date-app",
+    "name": "かおりと福岡クリスマス",
     "slug": "christmas-date-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,6 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
@@ -25,6 +28,19 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "scheme": "christmas-date-app",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "このアプリは福岡のデートスポットをチェックインするために位置情報を使用します。"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }

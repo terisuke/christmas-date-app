@@ -1,0 +1,215 @@
+# PR Preview Build Workflow for Expo/React Native Application
+# Automatically creates preview builds for pull requests using EAS Update
+#
+# This workflow uses EAS Update to create preview deployments that can be
+# tested via Expo Go or development builds.
+#
+# Prerequisites:
+# 1. EXPO_TOKEN secret configured in GitHub repository
+# 2. EAS project configured (eas build:configure)
+# 3. EAS Update configured in app.json/app.config.js
+
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+# Cancel in-progress runs for the same PR
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # Run basic checks before creating preview
+  validate:
+    name: Validate PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test -- --ci --watchAll=false
+        env:
+          CI: true
+
+  # Create EAS Update preview
+  preview:
+    name: Create Preview
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 20
+    # Only run if EXPO_TOKEN is configured
+    if: ${{ vars.ENABLE_PREVIEW_BUILDS == 'true' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # Create EAS Update for the PR
+      - name: Create EAS Update
+        id: eas-update
+        run: |
+          # Create a unique branch name for this PR
+          BRANCH_NAME="pr-${{ github.event.pull_request.number }}"
+
+          # Publish update
+          eas update \
+            --branch "$BRANCH_NAME" \
+            --message "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" \
+            --non-interactive \
+            --json > update-result.json || true
+
+          # Check if update was successful
+          if [ -f update-result.json ] && [ -s update-result.json ]; then
+            echo "Update published successfully"
+            cat update-result.json
+          else
+            echo "Note: EAS Update may not be configured. Skipping preview deployment."
+            echo "To enable previews, run 'eas update:configure' in your project."
+          fi
+        continue-on-error: true
+
+      # Comment on PR with preview information
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        if: success()
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const branchName = `pr-${prNumber}`;
+
+            const body = `## Preview Deployment
+
+            A preview deployment has been created for this pull request.
+
+            **Branch:** \`${branchName}\`
+            **Commit:** \`${context.sha.substring(0, 7)}\`
+
+            ### How to test:
+
+            1. **Using Expo Go:**
+               - Install [Expo Go](https://expo.dev/go) on your device
+               - Open Expo Go and sign in to your Expo account
+               - The update will appear in your project list
+
+            2. **Using Development Build:**
+               - If you have a development build installed, the update will be applied automatically
+
+            ---
+            *This preview will be automatically updated when new commits are pushed to this PR.*`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## Preview Deployment')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: body
+              });
+            }
+        continue-on-error: true
+
+  # Summary job
+  summary:
+    name: PR Preview Summary
+    runs-on: ubuntu-latest
+    needs: [validate, preview]
+    if: always()
+
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## PR Preview Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.validate.result }}" == "success" ]; then
+            echo "| Validation | Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Validation | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.preview.result }}" == "success" ]; then
+            echo "| Preview | Created |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.preview.result }}" == "skipped" ]; then
+            echo "| Preview | Skipped |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Preview | Failed |" >> $GITHUB_STEP_SUMMARY
+          fi

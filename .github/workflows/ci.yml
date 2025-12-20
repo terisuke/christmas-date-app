@@ -1,0 +1,119 @@
+# CI Workflow for Expo/React Native Application
+# Runs on push to main and pull requests
+# Performs type checking, testing, and linting
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # Main CI job: install, type-check, lint, and test
+  ci:
+    name: CI Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Node.js with caching
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      # Cache node_modules for faster subsequent runs
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+
+      # Install dependencies (skip if cache hit)
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # TypeScript type checking
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      # Run linting (if eslint is configured)
+      - name: Lint
+        run: |
+          if [ -f "eslint.config.js" ] || [ -f "eslint.config.mjs" ] || [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ] || [ -f ".eslintrc" ]; then
+            echo "ESLint configuration found, running linting..."
+            npx eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0
+          else
+            echo "No ESLint configuration found, skipping linting step."
+          fi
+        continue-on-error: false
+
+      # Run tests
+      - name: Run tests
+        run: npm test -- --ci --coverage --watchAll=false
+        env:
+          CI: true
+
+      # Upload coverage report as artifact (optional)
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  # Expo Doctor check (validates Expo project configuration)
+  expo-check:
+    name: Expo Doctor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # Run Expo Doctor to check project health
+      - name: Run Expo Doctor
+        run: npx expo-doctor
+        continue-on-error: true
