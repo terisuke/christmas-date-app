@@ -1,4 +1,4 @@
-// Jest setup file - minimal setup for unit tests
+// Jest setup file for unit and component tests
 
 // Mock console to reduce noise in tests
 const originalConsole = global.console;
@@ -23,4 +23,5 @@ global.fetch = jest.fn(() =>
 // Clean up after each test
 afterEach(() => {
   jest.clearAllMocks();
+  jest.useRealTimers();
 });

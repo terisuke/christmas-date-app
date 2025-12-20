@@ -6,28 +6,29 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#ff4757"
     },
     "assetBundlePatterns": [
-      "**/*"
+      "assets/**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "jp.cor-inc.christmas-date-app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ff4757"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "jp.corinc.christmasdateapp"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "scheme": "christmas-date-app",
     "plugins": [
@@ -37,7 +38,9 @@
         {
           "locationAlwaysAndWhenInUsePermission": "このアプリは福岡のデートスポットをチェックインするために位置情報を使用します。"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

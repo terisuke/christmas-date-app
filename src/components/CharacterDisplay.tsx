@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import VRMCharacter, { VRMExpression } from './VRMCharacter';
+import { View, Text, Image, StyleSheet } from 'react-native';
 
-export type KaoriExpression = VRMExpression;
+export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' | 'thinking';
 
 interface CharacterDisplayProps {
   expression?: KaoriExpression;
@@ -18,7 +17,14 @@ const SIZE_HEIGHT: Record<string, number> = {
   large: 350,
 };
 
-// フォールバック用の絵文字
+// 時間帯別背景色
+const TIME_BG: Record<string, string> = {
+  morning: '#E8F4FD',
+  afternoon: '#FFF8E7',
+  night: '#1a1a2e',
+};
+
+// フォールバック用の絵文字（画像がない場合）
 const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
   neutral: '(._. )',
   happy: '(*^_^*)',
@@ -28,21 +34,15 @@ const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
   thinking: '(・_・?)',
 };
 
-// フォールバック用の背景色
-const EXPRESSION_BG: Record<KaoriExpression, string> = {
-  neutral: '#e3f2fd',
-  happy: '#fff9c4',
-  shy: '#fce4ec',
-  surprised: '#e8f5e9',
-  sad: '#e0e0e0',
-  thinking: '#f3e5f5',
-};
-
-// 時間帯別背景色
-const TIME_BG: Record<string, string> = {
-  morning: '#E8F4FD',
-  afternoon: '#FFF8E7',
-  night: '#1a1a2e',
+// 表情別画像（assets/images/kaori/に配置）
+// 画像がない場合は絵文字フォールバックを使用
+const EXPRESSION_IMAGES: Record<KaoriExpression, any> = {
+  neutral: null, // require('../../assets/images/kaori/neutral.png'),
+  happy: null,   // require('../../assets/images/kaori/happy.png'),
+  shy: null,     // require('../../assets/images/kaori/shy.png'),
+  surprised: null, // require('../../assets/images/kaori/surprised.png'),
+  sad: null,     // require('../../assets/images/kaori/sad.png'),
+  thinking: null, // require('../../assets/images/kaori/thinking.png'),
 };
 
 export default function CharacterDisplay({
@@ -52,48 +52,34 @@ export default function CharacterDisplay({
   timeOfDay = 'afternoon',
 }: CharacterDisplayProps) {
   const height = SIZE_HEIGHT[size];
-
-  // ネイティブではVRMを試行（フォールバック内蔵）
-  const useVRM = Platform.OS !== 'web';
-
-  if (useVRM) {
-    return (
-      <View style={styles.container}>
-        <VRMCharacter
-          expression={expression}
-          timeOfDay={timeOfDay}
-          style={{ height }}
-        />
-        {showName && (
-          <View style={[
-            styles.nameTag,
-            timeOfDay === 'night' && styles.nameTagNight
-          ]}>
-            <Text style={styles.characterName}>雪村 かおり</Text>
-            <Text style={styles.characterInfo}>17歳 / 小樽出身</Text>
-          </View>
-        )}
-      </View>
-    );
-  }
-
-  // Webフォールバック
-  const bgColor = timeOfDay ? TIME_BG[timeOfDay] : EXPRESSION_BG[expression];
+  const bgColor = TIME_BG[timeOfDay];
   const isNight = timeOfDay === 'night';
+  const imageSource = EXPRESSION_IMAGES[expression];
 
   return (
     <View style={styles.container}>
-      <View
-        style={[
-          styles.fallbackContainer,
-          { height, backgroundColor: bgColor },
-        ]}
-      >
-        <Text style={[styles.expressionEmoji, isNight && styles.emojiNight]}>
-          {EXPRESSION_EMOJI[expression]}
-        </Text>
+      <View style={[styles.characterContainer, { height, backgroundColor: bgColor }]}>
+        {imageSource ? (
+          // 2D画像がある場合
+          <Image
+            source={imageSource}
+            style={styles.characterImage}
+            resizeMode="contain"
+          />
+        ) : (
+          // フォールバック（絵文字）
+          <View style={styles.emojiContainer}>
+            <Text style={[styles.expressionEmoji, isNight && styles.emojiNight]}>
+              {EXPRESSION_EMOJI[expression]}
+            </Text>
+            <Text style={[styles.expressionLabel, isNight && styles.labelNight]}>
+              {expression}
+            </Text>
+          </View>
+        )}
+
         {showName && (
-          <View style={[styles.nameTagFallback, isNight && styles.nameTagNight]}>
+          <View style={[styles.nameTag, isNight && styles.nameTagNight]}>
             <Text style={styles.characterName}>雪村 かおり</Text>
             <Text style={styles.characterInfo}>17歳 / 小樽出身</Text>
           </View>
@@ -108,12 +94,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
-  fallbackContainer: {
+  characterContainer: {
     width: '100%',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    overflow: 'hidden',
+  },
+  characterImage: {
+    width: '100%',
+    height: '100%',
+  },
+  emojiContainer: {
+    alignItems: 'center',
   },
   expressionEmoji: {
     fontSize: 48,
@@ -121,6 +115,15 @@ const styles = StyleSheet.create({
   },
   emojiNight: {
     color: '#ccc',
+  },
+  expressionLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#888',
+    textTransform: 'capitalize',
+  },
+  labelNight: {
+    color: '#aaa',
   },
   nameTag: {
     position: 'absolute',
@@ -135,15 +138,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-  },
-  nameTagFallback: {
-    position: 'absolute',
-    bottom: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    alignItems: 'center',
   },
   nameTagNight: {
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
