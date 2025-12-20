@@ -52,7 +52,7 @@ jobs:
       # Install dependencies (skip if cache hit)
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       # TypeScript type checking
       - name: TypeScript type check
@@ -111,7 +111,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       # Run Expo Doctor to check project health
       - name: Run Expo Doctor
