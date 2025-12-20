@@ -15,26 +15,108 @@ export default function OpeningScreen() {
   const [isStarting, setIsStarting] = useState(false);
 
   const storyTexts = [
+    // Scene 1: Prologue introduction
+    {
+      speaker: '',
+      text: '12月24日、午前9時。\n博多駅の改札前。',
+      expression: 'neutral' as const,
+    },
+    {
+      speaker: '',
+      text: '冬の朝の空気は、どこか甘い香りがする。\n街のあちこちで、クリスマスの飾りが揺れている。',
+      expression: 'neutral' as const,
+    },
+    {
+      speaker: '',
+      text: '今日は、北海道から来る親戚を迎えに来た。\n小樽に住む叔母さんの娘...従姉妹の子、らしい。',
+      expression: 'neutral' as const,
+    },
+    // Scene 2: Kaori appears
+    {
+      speaker: '',
+      text: 'ふと、改札の向こうに\n白いマフラーを巻いた少女が見えた。',
+      expression: 'neutral' as const,
+    },
     {
       speaker: 'かおり',
-      text: '...え、えっと...おにいちゃん？\n北海道から来た、かおりです...',
+      text: '...あ、あの...えっと...',
+      expression: 'shy' as const,
+    },
+    {
+      speaker: '',
+      text: '彼女はきょろきょろと辺りを見回している。\n長い黒髪が、冬の風に揺れた。',
+      expression: 'shy' as const,
+    },
+    // Scene 3: Introduction
+    {
+      speaker: 'かおり',
+      text: '...おにいちゃん？\n...北海道から来た、雪村かおりです...',
       expression: 'shy' as const,
     },
     {
       speaker: 'かおり',
-      text: 'あの...福岡のこと、全然わからないから...\nよろしくお願いします...',
+      text: '...ごめんね、朝早くから。\n新幹線、なまら長くて...',
+      expression: 'shy' as const,
+    },
+    {
+      speaker: 'かおり',
+      text: '...あっ、今「なまら」って言った？\n...聞かなかったことにして...',
+      expression: 'shy' as const,
+    },
+    // Scene 4: Kaori's background
+    {
+      speaker: '',
+      text: '雪村かおり、17歳。高校2年生。\n小樽で生まれ育った、北国の少女。',
       expression: 'neutral' as const,
     },
     {
-      speaker: '説明',
-      text: 'あなたは北海道の小樽から来た17歳のいとこ「雪村かおり」を\n福岡のクリスマスマーケットに案内することになった。',
+      speaker: '',
+      text: 'おとなしくて人見知りだけど、\n綺麗なものを見ると目を輝かせる。',
       expression: 'neutral' as const,
     },
     {
-      speaker: '説明',
-      text: '制限時間は24時間。\n福岡の素敵なスポットを巡って、かおりとの思い出を作ろう！',
+      speaker: '',
+      text: '今日は一人で福岡まで来たらしい。\n初めての九州、初めての一人旅。',
+      expression: 'neutral' as const,
+    },
+    // Scene 5: Establishing connection
+    {
+      speaker: 'かおり',
+      text: '...福岡って、暖かいね。\n小樽は今頃、雪だよ...',
+      expression: 'neutral' as const,
+    },
+    {
+      speaker: 'かおり',
+      text: '...ね、おにいちゃん。\n福岡のクリスマスって、どんな感じ？',
+      expression: 'thinking' as const,
+    },
+    {
+      speaker: 'かおり',
+      text: '...イルミネーション、見てみたい。\n...ラーメンも...食べてみたい...',
+      expression: 'shy' as const,
+    },
+    // Scene 6: Game premise
+    {
+      speaker: '',
+      text: '彼女の瞳には、期待と不安が入り混じっている。\n知らない街で、知らない人と過ごすクリスマス。',
+      expression: 'neutral' as const,
+    },
+    {
+      speaker: '',
+      text: 'でも、その眼差しの奥には、\nどこか寂しげな影も見えた気がした。',
+      expression: 'neutral' as const,
+    },
+    // Scene 7: The promise
+    {
+      speaker: 'かおり',
+      text: '...あの、おにいちゃん。\n今日...一緒にいてくれる？',
+      expression: 'shy' as const,
+    },
+    {
+      speaker: '',
+      text: 'かおりとの、9時間のクリスマスデートが始まる。\n福岡の街を巡って、最高の思い出を作ろう。',
       expression: 'happy' as const,
-    }
+    },
   ];
 
   const handleNicknameSubmit = async () => {
@@ -107,18 +189,27 @@ export default function OpeningScreen() {
 
   const currentStory = storyTexts[storyStep];
 
+  const isNarration = !currentStory.speaker;
+
   return (
     <View style={styles.storyContainer}>
       <View style={styles.characterArea}>
-        <CharacterDisplay
-          expression={currentStory.expression}
-          size="large"
-        />
+        {/* Only show character when Kaori is speaking */}
+        {currentStory.speaker === 'かおり' && (
+          <CharacterDisplay
+            expression={currentStory.expression}
+            size="large"
+          />
+        )}
       </View>
 
-      <View style={styles.textArea}>
-        <Text style={styles.speaker}>{currentStory.speaker}</Text>
-        <Text style={styles.storyText}>{currentStory.text}</Text>
+      <View style={[styles.textArea, isNarration && styles.narrationArea]}>
+        {currentStory.speaker ? (
+          <Text style={styles.speaker}>{currentStory.speaker}</Text>
+        ) : null}
+        <Text style={[styles.storyText, isNarration && styles.narrationText]}>
+          {currentStory.text}
+        </Text>
 
         <TouchableOpacity style={styles.nextButton} onPress={nextStory}>
           <Text style={styles.nextButtonText}>
@@ -199,6 +290,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 25,
     minHeight: 200,
   },
+  narrationArea: {
+    backgroundColor: 'rgba(30, 30, 50, 0.9)',
+  },
   speaker: {
     fontSize: 14,
     fontWeight: 'bold',
@@ -210,6 +304,10 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: '#333',
     marginBottom: 20,
+  },
+  narrationText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontStyle: 'italic',
   },
   nextButton: {
     alignSelf: 'flex-end',

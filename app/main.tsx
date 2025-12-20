@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,17 @@ import {
   ImageBackground,
   Animated,
   Dimensions,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay from '../src/components/CharacterDisplay';
 import { KaoriExpression } from '../src/components/CharacterDisplay';
+import { sendChatMessage, getOpenRouterApiKey } from '../src/services/ai';
 
 const { width } = Dimensions.get('window');
 
@@ -69,12 +74,26 @@ export default function MainScreen() {
     timeRemaining,
     checkInCount,
     chatCount,
+    incrementChatCount,
   } = useGame();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentExpression, setCurrentExpression] = useState<KaoriExpression>('neutral');
   const [lastActiveTime, setLastActiveTime] = useState(Date.now());
   const [slideAnim] = useState(new Animated.Value(-250));
+  const [lastExpressionChange, setLastExpressionChange] = useState(Date.now());
+
+  // Chat integration
+  const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentDialogue, setCurrentDialogue] = useState('');
+  const [conversationHistory, setConversationHistory] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
+  const [messagesSinceExpressionChange, setMessagesSinceExpressionChange] = useState(0);
+  const inputRef = useRef<TextInput>(null);
+
+  // Minimum time between expression changes (30 seconds)
+  const EXPRESSION_COOLDOWN = 30 * 1000;
+  const CHAT_EXPRESSION_INTERVAL = 2; // Change expression every 2-3 messages
 
   // Get time of day
   const getTimeOfDay = (): 'morning' | 'afternoon' | 'night' => {
@@ -89,29 +108,40 @@ export default function MainScreen() {
   // Calculate idle time
   const lastActiveMinutes = Math.floor((Date.now() - lastActiveTime) / (1000 * 60));
 
-  // Update expression based on game state
+  // Update expression based on game state with rate limiting
   useEffect(() => {
-    // Idle for 60+ minutes -> sad
+    const now = Date.now();
+    const timeSinceLastChange = now - lastExpressionChange;
+
+    // Determine target expression
+    let targetExpression: KaoriExpression = 'neutral';
+
+    // Idle for 60+ minutes -> sad (priority override, no cooldown)
     if (lastActiveMinutes >= 60) {
-      setCurrentExpression('sad');
-      return;
+      targetExpression = 'sad';
     }
-
-    // Less than 1 hour remaining -> sad
-    if (timeRemaining < 1000 * 60 * 60) {
-      setCurrentExpression('sad');
-      return;
+    // Less than 1 hour remaining -> sad (priority override, no cooldown)
+    else if (timeRemaining < 1000 * 60 * 60) {
+      targetExpression = 'sad';
     }
-
-    // Affection-based expression
-    if (affection >= 4) {
-      setCurrentExpression('happy');
+    // Affection-based expression (with cooldown)
+    else if (affection >= 4) {
+      targetExpression = 'happy';
     } else if (affection >= 3) {
-      setCurrentExpression('shy');
-    } else {
-      setCurrentExpression('neutral');
+      targetExpression = 'shy';
     }
-  }, [affection, timeRemaining, lastActiveMinutes]);
+
+    // Only update if expression is different and cooldown has passed
+    // Or if it's a priority expression (sad for important events)
+    const isPriorityChange = targetExpression === 'sad' && currentExpression !== 'sad';
+    const shouldUpdate = targetExpression !== currentExpression &&
+      (isPriorityChange || timeSinceLastChange >= EXPRESSION_COOLDOWN);
+
+    if (shouldUpdate) {
+      setCurrentExpression(targetExpression);
+      setLastExpressionChange(now);
+    }
+  }, [affection, timeRemaining, lastActiveMinutes, currentExpression, lastExpressionChange]);
 
   // Update last active time on interaction
   useEffect(() => {
@@ -128,6 +158,49 @@ export default function MainScreen() {
       friction: 11,
     }).start();
     setMenuOpen(!menuOpen);
+  };
+
+  // Chat handler
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || isLoading) return;
+
+    const userMessage = inputText.trim();
+    setInputText('');
+    setIsLoading(true);
+
+    // Add to conversation history
+    const newHistory = [...conversationHistory, { role: 'user' as const, content: userMessage }];
+    setConversationHistory(newHistory);
+
+    try {
+      const apiKey = getOpenRouterApiKey();
+      const response = await sendChatMessage(userMessage, conversationHistory.slice(-10), apiKey);
+
+      // Update dialogue
+      setCurrentDialogue(response.message);
+
+      // Add response to history
+      setConversationHistory([...newHistory, { role: 'assistant' as const, content: response.message }]);
+
+      // Update expression with rate limiting (every 2-3 messages)
+      const newMessageCount = messagesSinceExpressionChange + 1;
+      const shouldChangeExpression = newMessageCount >= CHAT_EXPRESSION_INTERVAL + Math.floor(Math.random() * 2);
+
+      if (shouldChangeExpression) {
+        setCurrentExpression(response.expression);
+        setLastExpressionChange(Date.now());
+        setMessagesSinceExpressionChange(0);
+      } else {
+        setMessagesSinceExpressionChange(newMessageCount);
+      }
+
+      incrementChatCount();
+    } catch (error) {
+      console.error('Chat error:', error);
+      setCurrentDialogue('...ごめん、今ちょっと...うまく話せなくて...');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Format time remaining
@@ -160,7 +233,10 @@ export default function MainScreen() {
   ];
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ImageBackground
         source={{ uri: TIME_BACKGROUNDS[timeOfDay] }}
         style={styles.background}
@@ -201,12 +277,41 @@ export default function MainScreen() {
             />
           </View>
 
-          {/* Dialogue Box */}
+          {/* Dialogue Box with Chat */}
           <View style={styles.dialogueBox}>
             <Text style={styles.speakerName}>かおり</Text>
             <Text style={styles.dialogueText}>
-              「{getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
+              「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
             </Text>
+            {isLoading && (
+              <View style={styles.typingIndicator}>
+                <ActivityIndicator size="small" color="#ff4757" />
+                <Text style={styles.typingText}>入力中...</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Chat Input */}
+          <View style={styles.chatInputContainer}>
+            <TextInput
+              ref={inputRef}
+              style={styles.chatInput}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="かおりに話しかける..."
+              placeholderTextColor="#999"
+              maxLength={100}
+              editable={!isLoading}
+              onSubmitEditing={handleSendMessage}
+              returnKeyType="send"
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
+              onPress={handleSendMessage}
+              disabled={!inputText.trim() || isLoading}
+            >
+              <Ionicons name="send" size={20} color="#fff" />
+            </TouchableOpacity>
           </View>
 
           {/* Menu Button */}
@@ -249,7 +354,7 @@ export default function MainScreen() {
           )}
         </View>
       </ImageBackground>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -338,9 +443,55 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: '#333',
   },
+  typingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  typingText: {
+    fontSize: 12,
+    color: '#999',
+    marginLeft: 8,
+  },
+  chatInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  chatInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    fontSize: 16,
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sendButton: {
+    backgroundColor: '#ff4757',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
   menuButton: {
     position: 'absolute',
-    bottom: 150,
+    bottom: 100,
     left: 20,
     backgroundColor: 'rgba(255, 71, 87, 0.9)',
     width: 50,
