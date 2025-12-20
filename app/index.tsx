@@ -1,7 +1,30 @@
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ImageBackground, ActivityIndicator } from 'react-native';
+import { useAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
 
 export default function Index() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!showSplash && isLoaded) {
+      if (isSignedIn) {
+        router.replace('/home');
+      } else {
+        router.replace('/sign-in' as const);
+      }
+    }
+  }, [showSplash, isLoaded, isSignedIn]);
+
   return (
     <ImageBackground
       source={{ uri: 'https://images.unsplash.com/photo-1544042259-ea9a0dd2b891?w=400' }}
@@ -10,24 +33,17 @@ export default function Index() {
     >
       <View style={styles.overlay}>
         <Text style={styles.title}>かおりと福岡クリスマス</Text>
-        <Text style={styles.subtitle}>アプリが正常に起動しました</Text>
+        <Text style={styles.subtitle}>Christmas Date in Fukuoka</Text>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/opening')}
-        >
-          <Text style={styles.buttonText}>ゲームを始める</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, styles.buttonSecondary]}
-          onPress={() => router.push('/chat')}
-        >
-          <Text style={styles.buttonTextSecondary}>チャットをテスト</Text>
-        </TouchableOpacity>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>
+            {!isLoaded ? '読み込み中...' : '準備中...'}
+          </Text>
+        </View>
 
         <View style={styles.info}>
-          <Text style={styles.infoText}>制限時間：24時間</Text>
+          <Text style={styles.infoText}>制限時間：8-10時間</Text>
           <Text style={styles.infoText}>目標：かおりとの好感度を上げよう！</Text>
         </View>
       </View>
@@ -47,53 +63,40 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 40,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
-  button: {
-    backgroundColor: '#ff4757',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
+  loadingContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
-  buttonSecondary: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  buttonText: {
+  loadingText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  buttonTextSecondary: {
-    color: '#ff4757',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 14,
+    marginTop: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   info: {
-    marginTop: 30,
     alignItems: 'center',
   },
   infoText: {
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 5,
