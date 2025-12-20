@@ -159,34 +159,45 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
-      // Sign in anonymously
-      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
-      if (authError) throw authError;
-
-      const userId = authData.user?.id;
-      if (!userId) throw new Error('No user ID');
-
       const startTime = new Date();
       const duration = calculateGameDuration(startTime.getHours());
 
-      // Create user profile
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
+      // Try to get current user from Supabase session (if available)
+      const currentUser = await getCurrentUser();
+      const userId = currentUser?.id || `local-${Date.now()}`;
+
+      if (currentUser) {
+        // Create user profile in database
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .upsert({
+            id: userId,
+            nickname,
+            game_started_at: startTime.toISOString(),
+            total_score: 0,
+            affection: 1,
+            steps_today: 0,
+            game_completed: false,
+          })
+          .select()
+          .single();
+
+        if (userError) throw userError;
+        setUser(userData);
+      } else {
+        // Local-only mode (guest mode)
+        setUser({
           id: userId,
           nickname,
+          created_at: startTime.toISOString(),
           game_started_at: startTime.toISOString(),
           total_score: 0,
           affection: 1,
           steps_today: 0,
           game_completed: false,
-        })
-        .select()
-        .single();
+        });
+      }
 
-      if (userError) throw userError;
-
-      setUser(userData);
       setGameStartedAt(startTime);
       setGameDuration(duration);
       setScore(0);
@@ -206,7 +217,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setGameDuration(duration);
       setTimeRemaining(duration);
       setUser({
-        id: 'local-user',
+        id: `local-${Date.now()}`,
         nickname,
         created_at: startTime.toISOString(),
         game_started_at: startTime.toISOString(),

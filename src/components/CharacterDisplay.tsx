@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import React, { Suspense, lazy } from 'react';
+import { View, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import Constants from 'expo-constants';
 
 export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' | 'thinking';
 
@@ -10,21 +11,18 @@ interface CharacterDisplayProps {
   timeOfDay?: 'morning' | 'afternoon' | 'night';
 }
 
-// サイズ別の高さ
 const SIZE_HEIGHT: Record<string, number> = {
   small: 150,
   medium: 250,
   large: 350,
 };
 
-// 時間帯別背景色
 const TIME_BG: Record<string, string> = {
   morning: '#E8F4FD',
   afternoon: '#FFF8E7',
   night: '#1a1a2e',
 };
 
-// フォールバック用の絵文字（画像がない場合）
 const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
   neutral: '(._. )',
   happy: '(*^_^*)',
@@ -34,15 +32,24 @@ const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
   thinking: '(・_・?)',
 };
 
-// 表情別画像（assets/images/kaori/に配置）
-// 画像がない場合は絵文字フォールバックを使用
-const EXPRESSION_IMAGES: Record<KaoriExpression, any> = {
-  neutral: null, // require('../../assets/images/kaori/neutral.png'),
-  happy: null,   // require('../../assets/images/kaori/happy.png'),
-  shy: null,     // require('../../assets/images/kaori/shy.png'),
-  surprised: null, // require('../../assets/images/kaori/surprised.png'),
-  sad: null,     // require('../../assets/images/kaori/sad.png'),
-  thinking: null, // require('../../assets/images/kaori/thinking.png'),
+// VRMは実機のみで動的ロード（シミュレータ/Webではnull）
+const VRMCharacter = Platform.select({
+  ios: lazy(() => import('./VRMCharacter')),
+  android: lazy(() => import('./VRMCharacter')),
+  default: null,
+});
+
+// 実機判定：Expo Go以外のネイティブビルド、または本番環境
+const isPhysicalDevice = (): boolean => {
+  // Web は常にfalse
+  if (Platform.OS === 'web') return false;
+
+  // Expo Go で動作している場合はfalse（シミュレータ/エミュレータの可能性が高い）
+  const isExpoGo = Constants.appOwnership === 'expo';
+  if (isExpoGo) return false;
+
+  // 本番ビルドまたはDevelopment Buildの場合はtrue
+  return true;
 };
 
 export default function CharacterDisplay({
@@ -54,20 +61,22 @@ export default function CharacterDisplay({
   const height = SIZE_HEIGHT[size];
   const bgColor = TIME_BG[timeOfDay];
   const isNight = timeOfDay === 'night';
-  const imageSource = EXPRESSION_IMAGES[expression];
+
+  // VRMを使用するかどうか
+  const useVRM = VRMCharacter && isPhysicalDevice();
 
   return (
     <View style={styles.container}>
       <View style={[styles.characterContainer, { height, backgroundColor: bgColor }]}>
-        {imageSource ? (
-          // 2D画像がある場合
-          <Image
-            source={imageSource}
-            style={styles.characterImage}
-            resizeMode="contain"
-          />
+        {useVRM ? (
+          <Suspense fallback={<ActivityIndicator size="large" color="#ff4757" />}>
+            <VRMCharacter
+              expression={expression}
+              timeOfDay={timeOfDay}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </Suspense>
         ) : (
-          // フォールバック（絵文字）
           <View style={styles.emojiContainer}>
             <Text style={[styles.expressionEmoji, isNight && styles.emojiNight]}>
               {EXPRESSION_EMOJI[expression]}
@@ -75,6 +84,9 @@ export default function CharacterDisplay({
             <Text style={[styles.expressionLabel, isNight && styles.labelNight]}>
               {expression}
             </Text>
+            {Platform.OS === 'web' && (
+              <Text style={styles.webNote}>※Web版はプレビューモード</Text>
+            )}
           </View>
         )}
 
@@ -102,10 +114,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  characterImage: {
-    width: '100%',
-    height: '100%',
-  },
   emojiContainer: {
     alignItems: 'center',
   },
@@ -124,6 +132,11 @@ const styles = StyleSheet.create({
   },
   labelNight: {
     color: '#aaa',
+  },
+  webNote: {
+    marginTop: 12,
+    fontSize: 10,
+    color: '#999',
   },
   nameTag: {
     position: 'absolute',
