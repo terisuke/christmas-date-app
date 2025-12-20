@@ -29,6 +29,13 @@ const EMOTION_TAGS: Record<string, KaoriExpression> = {
   '[sad]': 'sad',
   '[thinking]': 'thinking',
   '[neutral]': 'neutral',
+  // New format (AI returns this format based on KAORI_SYSTEM_PROMPT)
+  '[expression:happy]': 'happy',
+  '[expression:shy]': 'shy',
+  '[expression:surprised]': 'surprised',
+  '[expression:sad]': 'sad',
+  '[expression:thinking]': 'thinking',
+  '[expression:neutral]': 'neutral',
 };
 
 const EMOTION_KEYWORDS: Record<string, KaoriExpression> = {
@@ -69,9 +76,12 @@ function detectEmotion(text: string): KaoriExpression {
 
 function removeEmotionTags(text: string): string {
   let result = text;
+  // Remove static tags
   for (const tag of Object.keys(EMOTION_TAGS)) {
     result = result.replace(tag, '');
   }
+  // Also remove any [expression:xxx] format with regex for safety
+  result = result.replace(/\[expression:\w+\]/g, '');
   return result.trim();
 }
 
