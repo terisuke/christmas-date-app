@@ -23,6 +23,10 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="opening" />
             <Stack.Screen name="home" />
+            <Stack.Screen name="main" />
+            <Stack.Screen name="status" />
+            <Stack.Screen name="settings" />
+            <Stack.Screen name="credits" />
             <Stack.Screen name="map" />
             <Stack.Screen name="spot/[id]" />
             <Stack.Screen name="event" />

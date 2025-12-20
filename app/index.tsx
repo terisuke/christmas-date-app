@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ImageBackground, ActivityIndicator } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
+import { useGame } from '../src/contexts/GameContext';
 
 export default function Index() {
   const { isSignedIn, isLoaded } = useAuth();
+  const { gameStartedAt, user } = useGame();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -18,12 +20,17 @@ export default function Index() {
   useEffect(() => {
     if (!showSplash && isLoaded) {
       if (isSignedIn) {
-        router.replace('/home');
+        // If game already started, go to main screen
+        if (gameStartedAt && user) {
+          router.replace('/main');
+        } else {
+          router.replace('/opening');
+        }
       } else {
         router.replace('/sign-in' as const);
       }
     }
-  }, [showSplash, isLoaded, isSignedIn]);
+  }, [showSplash, isLoaded, isSignedIn, gameStartedAt, user]);
 
   return (
     <ImageBackground
@@ -43,8 +50,8 @@ export default function Index() {
         </View>
 
         <View style={styles.info}>
-          <Text style={styles.infoText}>制限時間：8-10時間</Text>
-          <Text style={styles.infoText}>目標：かおりとの好感度を上げよう！</Text>
+          <Text style={styles.infoText}>制限時間：9時間</Text>
+          <Text style={styles.infoText}>目標：かおりとの好感度を上げよう!</Text>
         </View>
       </View>
     </ImageBackground>

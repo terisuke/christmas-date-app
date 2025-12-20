@@ -216,3 +216,15 @@ function getDefaultResponse(userMessage: string): AIResponse {
 export function getOpenRouterApiKey(): string | undefined {
   return process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
 }
+
+// Parse Kaori's response to extract message and expression
+export function parseKaoriResponse(response: string): {
+  message: string;
+  expression: 'neutral' | 'happy' | 'shy' | 'thinking';
+} {
+  const expressionMatch = response.match(/\[expression:(neutral|happy|shy|thinking)\]/);
+  const expression = (expressionMatch?.[1] as 'neutral' | 'happy' | 'shy' | 'thinking') || 'neutral';
+  const message = response.replace(/\[expression:\w+\]/g, '').trim();
+
+  return { message, expression };
+}
