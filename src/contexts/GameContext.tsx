@@ -42,24 +42,8 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-// Variable game duration based on start time (8-10 hours)
-const calculateGameDuration = (startHour: number): number => {
-  // Morning start (before 10am): 10 hours
-  // Midday start (10am-2pm): 9 hours
-  // Afternoon start (2pm-6pm): 8 hours
-  // Evening start (after 6pm): 6 hours (shorter for late starters)
-  if (startHour < 10) {
-    return 10 * 60 * 60 * 1000; // 10 hours
-  } else if (startHour < 14) {
-    return 9 * 60 * 60 * 1000; // 9 hours
-  } else if (startHour < 18) {
-    return 8 * 60 * 60 * 1000; // 8 hours
-  } else {
-    return 6 * 60 * 60 * 1000; // 6 hours
-  }
-};
-
-const DEFAULT_GAME_DURATION = 8 * 60 * 60 * 1000; // 8 hours default
+// Fixed 9-hour game duration
+const GAME_DURATION = 9 * 60 * 60 * 1000; // 9 hours fixed
 const TOTAL_SPOTS = 9; // 6 normal + 3 secret spots
 const ALL_CLEAR_BONUS = 500;
 
@@ -70,8 +54,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [stepsToday, setStepsToday] = useState(0);
   const [checkInCount, setCheckInCount] = useState(0);
   const [chatCount, setChatCount] = useState(0);
-  const [gameDuration, setGameDuration] = useState(DEFAULT_GAME_DURATION);
-  const [timeRemaining, setTimeRemaining] = useState(DEFAULT_GAME_DURATION);
+  const [gameDuration, setGameDuration] = useState(GAME_DURATION);
+  const [timeRemaining, setTimeRemaining] = useState(GAME_DURATION);
   const [gameStartedAt, setGameStartedAt] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [checkedInSpots, setCheckedInSpots] = useState<string[]>([]);
@@ -160,7 +144,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
 
       const startTime = new Date();
-      const duration = calculateGameDuration(startTime.getHours());
 
       // Try to get current user from Supabase session (if available)
       const currentUser = await getCurrentUser();
@@ -199,23 +182,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
 
       setGameStartedAt(startTime);
-      setGameDuration(duration);
+      setGameDuration(GAME_DURATION);
       setScore(0);
       setAffection(1);
       setStepsToday(0);
       setCheckInCount(0);
       setChatCount(0);
-      setTimeRemaining(duration);
+      setTimeRemaining(GAME_DURATION);
       setCheckedInSpots([]);
       setAllClearBonusApplied(false);
     } catch (error) {
       console.error('Start game error:', error);
       // Fallback to local-only mode
       const startTime = new Date();
-      const duration = calculateGameDuration(startTime.getHours());
       setGameStartedAt(startTime);
-      setGameDuration(duration);
-      setTimeRemaining(duration);
+      setGameDuration(GAME_DURATION);
+      setTimeRemaining(GAME_DURATION);
       setUser({
         id: `local-${Date.now()}`,
         nickname,
@@ -289,8 +271,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setStepsToday(0);
     setCheckInCount(0);
     setChatCount(0);
-    setGameDuration(DEFAULT_GAME_DURATION);
-    setTimeRemaining(DEFAULT_GAME_DURATION);
+    setGameDuration(GAME_DURATION);
+    setTimeRemaining(GAME_DURATION);
     setGameStartedAt(null);
     setCheckedInSpots([]);
     setAllClearBonusApplied(false);

@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, ImageBackground, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay from '../src/components/CharacterDisplay';
 
 export default function OpeningScreen() {
+  const { replay } = useLocalSearchParams<{ replay?: string }>();
+  const isReplay = replay === 'true';
+
   const { startGame, isLoading } = useGame();
   const [nickname, setNickname] = useState('');
-  const [showStory, setShowStory] = useState(false);
+  const [showStory, setShowStory] = useState(isReplay);
   const [storyStep, setStoryStep] = useState(0);
   const [isStarting, setIsStarting] = useState(false);
 
@@ -54,8 +57,8 @@ export default function OpeningScreen() {
     if (storyStep < storyTexts.length - 1) {
       setStoryStep(storyStep + 1);
     } else {
-      // Start game
-      router.replace('/home');
+      // Start game - navigate to main visual novel screen
+      router.replace('/main');
     }
   };
 
