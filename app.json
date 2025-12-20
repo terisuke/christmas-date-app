@@ -37,7 +37,9 @@
         {
           "locationAlwaysAndWhenInUsePermission": "このアプリは福岡のデートスポットをチェックインするために位置情報を使用します。"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
