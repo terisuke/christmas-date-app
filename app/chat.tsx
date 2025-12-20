@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay, { KaoriExpression } from '../src/components/CharacterDisplay';
 import { sendChatMessage, getOpenRouterApiKey } from '../src/services/ai';
+import { useTimeOfDay } from '../src/hooks/useTimeOfDay';
 
 interface ChatMessage {
   id: string;
@@ -17,6 +18,7 @@ interface ChatMessage {
 export default function ChatScreen() {
   const { incrementChatCount } = useGame();
   const scrollViewRef = useRef<ScrollView>(null);
+  const timeOfDay = useTimeOfDay();
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -112,11 +114,12 @@ export default function ChatScreen() {
       </View>
 
       {/* Character Display */}
-      <View style={styles.characterContainer}>
+      <View style={[styles.characterContainer, timeOfDay === 'night' && styles.characterContainerNight]}>
         <CharacterDisplay
           expression={currentExpression}
           size="small"
           showName={false}
+          timeOfDay={timeOfDay}
         />
       </View>
 
@@ -222,9 +225,12 @@ const styles = StyleSheet.create({
     width: 34,
   },
   characterContainer: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#FFF8E7',
     paddingVertical: 10,
     alignItems: 'center',
+  },
+  characterContainerNight: {
+    backgroundColor: '#1a1a2e',
   },
   content: {
     flex: 1,

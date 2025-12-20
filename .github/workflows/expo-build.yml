@@ -67,7 +67,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8

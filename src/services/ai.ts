@@ -4,11 +4,11 @@ import { KaoriExpression } from '../components/CharacterDisplay';
 // OpenRouter API configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Model priority list (fallback order)
+// Model priority list (fallback order) - Updated Dec 2025
 const MODELS = [
-  'google/gemini-2.5-flash-preview',
-  'x-ai/grok-3-fast',
-  'openai/gpt-4.1-nano',
+  'google/gemini-2.5-flash',      // Stable version
+  'x-ai/grok-4-fast',             // Updated to Grok 4
+  'openai/gpt-4.1-nano',          // Fallback
 ];
 
 interface ChatMessage {

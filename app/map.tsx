@@ -212,7 +212,7 @@ export default function MapScreen() {
               style={[
                 styles.spotCard,
                 spot.is_secret && styles.secretSpotCard,
-                spot.distance && spot.distance <= 0.05 && styles.nearbySpotCard
+                spot.distance !== undefined && spot.distance <= 0.05 && styles.nearbySpotCard
               ]}
               onPress={() => handleSpotPress(spot)}
             >
