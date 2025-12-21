@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, Platform, Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -42,6 +42,11 @@ export default function CharacterDisplay({
   style,
 }: CharacterDisplayProps) {
   const [imageError, setImageError] = useState(false);
+
+  // Reset imageError when expression changes to allow retry
+  useEffect(() => {
+    setImageError(false);
+  }, [expression]);
 
   const sprite = CHARACTER_SPRITES[expression];
 

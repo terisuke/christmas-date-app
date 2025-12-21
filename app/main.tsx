@@ -156,6 +156,13 @@ export default function MainScreen() {
     setLastActiveTime(Date.now());
   }, [score, checkInCount, chatCount]);
 
+  // Clear chat dialogue when idle for 60+ minutes to show idle-specific dialogue
+  useEffect(() => {
+    if (lastActiveMinutes >= 60 && currentDialogue) {
+      setCurrentDialogue('');
+    }
+  }, [lastActiveMinutes, currentDialogue]);
+
   // Keyboard listener
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
