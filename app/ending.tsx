@@ -80,7 +80,7 @@ export default function EndingScreen() {
 
           {/* Character Section */}
           <View style={styles.characterSection}>
-            <CharacterDisplay expression={ending.expression} size="medium" showName={false} />
+            <CharacterDisplay expression={ending.expression} />
             <View style={styles.dialogueBox}>
               <Text style={styles.kaoriMessage}>「{ending.kaoriMessage}」</Text>
             </View>

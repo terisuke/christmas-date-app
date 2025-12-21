@@ -77,10 +77,7 @@ export default function SpotDetailScreen() {
 
         {/* Character Preview */}
         <View style={styles.characterArea}>
-          <CharacterDisplay
-            expression={reaction?.expression || 'neutral'}
-            size="large"
-          />
+          <CharacterDisplay expression={reaction?.expression || 'neutral'} />
           <View style={styles.previewDialogue}>
             <Text style={styles.previewText}>
               「{reaction?.greeting || '...ここは...どんなところ？'}」

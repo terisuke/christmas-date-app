@@ -130,12 +130,7 @@ export default function ChatScreen() {
 
       {/* Character Display */}
       <View style={[styles.characterContainer, timeOfDay === 'night' && styles.characterContainerNight]}>
-        <CharacterDisplay
-          expression={currentExpression}
-          size="small"
-          showName={false}
-          timeOfDay={timeOfDay}
-        />
+        <CharacterDisplay expression={currentExpression} />
       </View>
 
       <KeyboardAvoidingView

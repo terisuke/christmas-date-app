@@ -169,7 +169,7 @@ export default function EventScreen() {
 
       {/* Character Area */}
       <View style={styles.characterArea}>
-        <CharacterDisplay expression={currentExpression} size="large" showName={false} />
+        <CharacterDisplay expression={currentExpression} />
       </View>
 
       {/* Text Area */}

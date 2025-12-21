@@ -269,7 +269,7 @@ export default function MainScreen() {
 
   // Render content inside background
   const renderContent = () => (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, gpsTimeOfDay === 'night' && styles.nightOverlay]}>
       {/* Status Bar with Menu Button */}
       <View style={styles.statusBar}>
         <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
@@ -307,12 +307,7 @@ export default function MainScreen() {
 
       {/* Character Display Area - Faded when keyboard visible */}
       <View style={[styles.characterArea, keyboardVisible && styles.characterAreaFaded]}>
-        <CharacterDisplay
-          expression={currentExpression}
-          size="large"
-          showName={false}
-          timeOfDay={characterTimeOfDay}
-        />
+        <CharacterDisplay expression={currentExpression} />
       </View>
 
       {/* Dialogue Box - Hidden when keyboard visible */}
@@ -423,7 +418,10 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  nightOverlay: {
+    backgroundColor: 'rgba(0, 0, 30, 0.4)',
   },
   statusBar: {
     flexDirection: 'row',
@@ -499,9 +497,9 @@ const styles = StyleSheet.create({
   },
   characterArea: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingBottom: 200, // Space above dialogue box
   },
   characterAreaFaded: {
     opacity: 0.4,
