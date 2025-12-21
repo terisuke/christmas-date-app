@@ -3,6 +3,12 @@ import { View, Text, Image, StyleSheet, Platform, Dimensions } from 'react-nativ
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// Character image aspect ratio (1333x2000 = 0.6665)
+const CHARACTER_ASPECT_RATIO = 1333 / 2000;
+// Character height calculated from full screen width
+const CHARACTER_WIDTH = SCREEN_WIDTH;
+const CHARACTER_HEIGHT = SCREEN_WIDTH / CHARACTER_ASPECT_RATIO;
+
 export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' | 'thinking';
 
 interface CharacterDisplayProps {
@@ -67,17 +73,19 @@ export default function CharacterDisplay({
 
 const styles = StyleSheet.create({
   container: {
+    width: CHARACTER_WIDTH,
+    height: CHARACTER_HEIGHT,
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
   characterImage: {
-    width: SCREEN_WIDTH * 0.85,
-    height: SCREEN_HEIGHT * 0.5,
+    width: CHARACTER_WIDTH,
+    height: CHARACTER_HEIGHT,
   },
   emojiContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: SCREEN_HEIGHT * 0.4,
+    flex: 1,
   },
   expressionEmoji: {
     fontSize: 64,

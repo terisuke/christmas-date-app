@@ -496,18 +496,23 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   characterArea: {
-    flex: 1,
-    justifyContent: 'flex-end',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    paddingBottom: 200, // Space above dialogue box
+    justifyContent: 'flex-end',
+    zIndex: 1,
   },
   characterAreaFaded: {
     opacity: 0.4,
   },
   dialogueBox: {
+    position: 'absolute',
+    bottom: 100, // Space for chat input
+    left: 20,
+    right: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    marginHorizontal: 20,
-    marginBottom: 100, // Space for chat input
     borderRadius: 15,
     padding: 20,
     minHeight: 100,
@@ -516,6 +521,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
+    zIndex: 10,
   },
   speakerName: {
     fontSize: 14,
