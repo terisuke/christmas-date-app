@@ -3,11 +3,12 @@ import { View, Text, Image, StyleSheet, Platform, Dimensions } from 'react-nativ
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Character image aspect ratio (1333x2000 = 0.6665)
+// Character image aspect ratio (width:height = 1333:2000 = 0.6665)
 const CHARACTER_ASPECT_RATIO = 1333 / 2000;
-// Character height calculated from full screen width
-const CHARACTER_WIDTH = SCREEN_WIDTH;
-const CHARACTER_HEIGHT = SCREEN_WIDTH / CHARACTER_ASPECT_RATIO;
+// Character width at 65% of screen width for proper VN display
+const CHARACTER_WIDTH = SCREEN_WIDTH * 0.65;
+// Height calculated from width to maintain aspect ratio
+const CHARACTER_HEIGHT = CHARACTER_WIDTH / CHARACTER_ASPECT_RATIO;
 
 export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' | 'thinking';
 

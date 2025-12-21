@@ -305,56 +305,53 @@ export default function MainScreen() {
         </View>
       </View>
 
-      {/* Main Content Area - Flex layout for dedicated zones */}
-      <View style={styles.mainContent}>
-        {/* Character Zone - Shows bust-up (upper portion) with overflow hidden */}
-        <View style={[styles.characterZone, keyboardVisible && styles.characterAreaFaded]}>
-          <CharacterDisplay expression={currentExpression} />
-        </View>
+      {/* Character Layer - Positioned absolutely, centered horizontally, anchored to bottom */}
+      <View style={[styles.characterLayer, keyboardVisible && styles.characterLayerFaded]}>
+        <CharacterDisplay expression={currentExpression} />
+      </View>
 
-        {/* Dialogue Zone - Dedicated space for dialogue and input */}
-        <View style={styles.dialogueZone}>
-          {/* Dialogue Box */}
-          {!keyboardVisible && (
-            <View style={styles.dialogueBox}>
-              <Text style={styles.speakerName}>かおり</Text>
-              <Text style={styles.dialogueText}>
-                「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
-              </Text>
-              {isLoading && (
-                <View style={styles.typingIndicator}>
-                  <ActivityIndicator size="small" color="#ff4757" />
-                  <Text style={styles.typingText}>入力中...</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Chat Input - Inside dialogue zone */}
-          <View style={[
-            styles.chatInputContainer,
-            keyboardVisible && { marginBottom: keyboardHeight }
-          ]}>
-            <TextInput
-              ref={inputRef}
-              style={styles.chatInput}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="かおりに話しかける..."
-              placeholderTextColor="#999"
-              maxLength={100}
-              editable={!isLoading}
-              onSubmitEditing={handleSendMessage}
-              returnKeyType="send"
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-              onPress={handleSendMessage}
-              disabled={!inputText.trim() || isLoading}
-            >
-              <Ionicons name="send" size={20} color="#fff" />
-            </TouchableOpacity>
+      {/* Bottom UI - Dialogue box and chat input, fixed at bottom */}
+      <View style={[
+        styles.bottomUI,
+        { paddingBottom: keyboardVisible ? keyboardHeight : 34 }
+      ]}>
+        {/* Dialogue Box */}
+        {!keyboardVisible && (
+          <View style={styles.dialogueBox}>
+            <Text style={styles.speakerName}>かおり</Text>
+            <Text style={styles.dialogueText} numberOfLines={4}>
+              「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
+            </Text>
+            {isLoading && (
+              <View style={styles.typingIndicator}>
+                <ActivityIndicator size="small" color="#ff4757" />
+                <Text style={styles.typingText}>入力中...</Text>
+              </View>
+            )}
           </View>
+        )}
+
+        {/* Chat Input */}
+        <View style={styles.chatInputContainer}>
+          <TextInput
+            ref={inputRef}
+            style={styles.chatInput}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="かおりに話しかける..."
+            placeholderTextColor="#999"
+            maxLength={100}
+            editable={!isLoading}
+            onSubmitEditing={handleSendMessage}
+            returnKeyType="send"
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
+            onPress={handleSendMessage}
+            disabled={!inputText.trim() || isLoading}
+          >
+            <Ionicons name="send" size={20} color="#fff" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -501,31 +498,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginLeft: 6,
   },
-  // Dedicated zones layout (Mystic Messenger pattern)
-  mainContent: {
-    flex: 1,
-    marginTop: 50, // Space below badges
-  },
-  characterZone: {
-    flex: 0.55,
-    overflow: 'hidden',
+  // VN Standard Layout - Character as background layer, UI overlays on top
+  characterLayer: {
+    position: 'absolute',
+    bottom: 220, // Position above the bottom UI area
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    justifyContent: 'flex-start', // Start from top to show bust-up (clip legs at bottom)
+    zIndex: 1,
   },
-  characterAreaFaded: {
-    opacity: 0.4,
+  characterLayerFaded: {
+    opacity: 0.3,
   },
-  dialogueZone: {
-    flex: 0.45,
-    paddingHorizontal: 20,
-    justifyContent: 'flex-end',
-    paddingBottom: 20,
+  bottomUI: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 10,
   },
   dialogueBox: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 15,
-    padding: 20,
-    marginBottom: 15,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
