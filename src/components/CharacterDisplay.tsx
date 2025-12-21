@@ -1,6 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { View, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
-import Constants from 'expo-constants';
+import React, { useState } from 'react';
+import { View, Text, Image, StyleSheet, Platform } from 'react-native';
 
 export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' | 'thinking';
 
@@ -11,18 +10,13 @@ interface CharacterDisplayProps {
   timeOfDay?: 'morning' | 'afternoon' | 'night';
 }
 
-const SIZE_HEIGHT: Record<string, number> = {
-  small: 150,
-  medium: 250,
-  large: 350,
+const SIZE_CONFIG: Record<string, { height: number; width: number }> = {
+  small: { height: 150, width: 100 },
+  medium: { height: 250, width: 170 },
+  large: { height: 350, width: 240 },
 };
 
-const TIME_BG: Record<string, string> = {
-  morning: '#E8F4FD',
-  afternoon: '#FFF8E7',
-  night: '#1a1a2e',
-};
-
+// Emoji fallbacks when sprites aren't available
 const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
   neutral: '(._. )',
   happy: '(*^_^*)',
@@ -32,50 +26,51 @@ const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
   thinking: '(・_・?)',
 };
 
-// VRMは実機のみで動的ロード（シミュレータ/Webではnull）
-const VRMCharacter = Platform.select({
-  ios: lazy(() => import('./VRMCharacter')),
-  android: lazy(() => import('./VRMCharacter')),
-  default: null,
-});
-
-// 実機判定：Expo Go以外のネイティブビルド、または本番環境
-const isPhysicalDevice = (): boolean => {
-  // Web は常にfalse
-  if (Platform.OS === 'web') return false;
-
-  // Expo Go で動作している場合はfalse（シミュレータ/エミュレータの可能性が高い）
-  const isExpoGo = Constants.appOwnership === 'expo';
-  if (isExpoGo) return false;
-
-  // 本番ビルドまたはDevelopment Buildの場合はtrue
-  return true;
+// Character sprite images - will fall back to emoji if images don't exist
+const CHARACTER_SPRITES: Record<KaoriExpression, any> = {
+  neutral: null, // Will be: require('../../assets/characters/kaori_neutral.png')
+  happy: null,   // Will be: require('../../assets/characters/kaori_happy.png')
+  shy: null,     // Will be: require('../../assets/characters/kaori_shy.png')
+  surprised: null, // Will be: require('../../assets/characters/kaori_surprised.png')
+  sad: null,     // Will be: require('../../assets/characters/kaori_sad.png')
+  thinking: null, // Will be: require('../../assets/characters/kaori_thinking.png')
 };
+
+// Try to load sprites if they exist
+try {
+  CHARACTER_SPRITES.neutral = require('../../assets/characters/kaori_neutral.png');
+  CHARACTER_SPRITES.happy = require('../../assets/characters/kaori_happy.png');
+  CHARACTER_SPRITES.shy = require('../../assets/characters/kaori_shy.png');
+  CHARACTER_SPRITES.surprised = require('../../assets/characters/kaori_surprised.png');
+  CHARACTER_SPRITES.sad = require('../../assets/characters/kaori_sad.png');
+  CHARACTER_SPRITES.thinking = require('../../assets/characters/kaori_thinking.png');
+} catch {
+  // Sprites not available yet, will use emoji fallback
+}
 
 export default function CharacterDisplay({
   expression = 'neutral',
   size = 'medium',
-  showName = false, // Default to false - character info should be in story/monologue
+  showName = false,
   timeOfDay = 'afternoon',
 }: CharacterDisplayProps) {
-  const height = SIZE_HEIGHT[size];
-  const bgColor = TIME_BG[timeOfDay];
+  const { height, width } = SIZE_CONFIG[size];
   const isNight = timeOfDay === 'night';
+  const [spriteError, setSpriteError] = useState(false);
 
-  // VRMを使用するかどうか
-  const useVRM = VRMCharacter && isPhysicalDevice();
+  const sprite = CHARACTER_SPRITES[expression];
+  const hasSprite = sprite && !spriteError;
 
   return (
     <View style={styles.container}>
-      <View style={[styles.characterContainer, { height, backgroundColor: bgColor }]}>
-        {useVRM ? (
-          <Suspense fallback={<ActivityIndicator size="large" color="#ff4757" />}>
-            <VRMCharacter
-              expression={expression}
-              timeOfDay={timeOfDay}
-              style={{ width: '100%', height: '100%' }}
-            />
-          </Suspense>
+      <View style={[styles.characterContainer, { height, width }]}>
+        {hasSprite ? (
+          <Image
+            source={sprite}
+            style={styles.characterImage}
+            resizeMode="contain"
+            onError={() => setSpriteError(true)}
+          />
         ) : (
           <View style={styles.emojiContainer}>
             <Text style={[styles.expressionEmoji, isNight && styles.emojiNight]}>
@@ -104,18 +99,20 @@ export default function CharacterDisplay({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    width: '100%',
   },
   characterContainer: {
-    width: '100%',
-    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    overflow: 'hidden',
+  },
+  characterImage: {
+    width: '100%',
+    height: '100%',
   },
   emojiContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   expressionEmoji: {
     fontSize: 48,
