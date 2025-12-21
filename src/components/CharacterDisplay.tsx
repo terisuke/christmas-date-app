@@ -7,7 +7,7 @@ export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' 
 interface CharacterDisplayProps {
   expression?: KaoriExpression;
   size?: 'small' | 'medium' | 'large';
-  showName?: boolean;
+  showName?: boolean; // Deprecated - name/age/origin should be in monologue, not on character display
   timeOfDay?: 'morning' | 'afternoon' | 'night';
 }
 
@@ -55,7 +55,7 @@ const isPhysicalDevice = (): boolean => {
 export default function CharacterDisplay({
   expression = 'neutral',
   size = 'medium',
-  showName = true,
+  showName = false, // Default to false - character info should be in story/monologue
   timeOfDay = 'afternoon',
 }: CharacterDisplayProps) {
   const height = SIZE_HEIGHT[size];
