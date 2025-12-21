@@ -69,6 +69,7 @@ const getKaoriDialogue = (
 
 export default function MainScreen() {
   const {
+    user,
     score,
     affection,
     timeRemaining,
@@ -198,7 +199,14 @@ export default function MainScreen() {
 
     try {
       const apiKey = getOpenRouterApiKey();
-      const response = await sendChatMessage(userMessage, conversationHistory.slice(-10), apiKey);
+      const nickname = user?.nickname || 'お兄さん';
+      const response = await sendChatMessage(
+        userMessage,
+        conversationHistory.slice(-10),
+        apiKey,
+        affection,
+        nickname
+      );
 
       // Update dialogue
       setCurrentDialogue(response.message);

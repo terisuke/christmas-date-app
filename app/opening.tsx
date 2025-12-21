@@ -18,23 +18,28 @@ export default function OpeningScreen() {
     // Scene 1: Prologue introduction
     {
       speaker: '',
-      text: '12月24日、午前9時。\n博多駅の改札前。',
+      text: '12月24日。冬の朝。\n街はクリスマスの飾りで彩られている。',
       expression: 'neutral' as const,
     },
     {
       speaker: '',
-      text: '冬の朝の空気は、どこか甘い香りがする。\n街のあちこちで、クリスマスの飾りが揺れている。',
+      text: '冬の朝の空気は、どこか甘い香りがする。\nどこかでホットワインを温めているのかもしれない。',
       expression: 'neutral' as const,
     },
     {
       speaker: '',
-      text: '今日は、北海道から来る親戚を迎えに来た。\n小樽に住む叔母さんの娘...従姉妹の子、らしい。',
+      text: '母さんから連絡があった。\n「おばさんに急な用事ができたから、\n　かおりちゃんを案内してあげて」',
+      expression: 'neutral' as const,
+    },
+    {
+      speaker: '',
+      text: 'おばさんと従姉妹の子が、\n3泊4日で遊びに来ていたのは知っていた。\nでも、今日が最終日で、まさか自分が...',
       expression: 'neutral' as const,
     },
     // Scene 2: Kaori appears
     {
       speaker: '',
-      text: 'ふと、改札の向こうに\n白いマフラーを巻いた少女が見えた。',
+      text: 'ふと、ホテルのロビーの隅に\n白いマフラーを巻いた少女が見えた。',
       expression: 'neutral' as const,
     },
     {
@@ -44,77 +49,77 @@ export default function OpeningScreen() {
     },
     {
       speaker: '',
-      text: '彼女はきょろきょろと辺りを見回している。\n長い黒髪が、冬の風に揺れた。',
+      text: '彼女はきょろきょろと辺りを見回している。\n長い黒髪が、冬の光に揺れた。',
       expression: 'shy' as const,
     },
-    // Scene 3: Introduction
+    // Scene 3: Introduction (formal)
     {
       speaker: 'かおり',
-      text: '...おにいちゃん？\n...北海道から来た、雪村かおりです...',
-      expression: 'shy' as const,
-    },
-    {
-      speaker: 'かおり',
-      text: '...ごめんね、朝早くから。\n新幹線、なまら長くて...',
+      text: '...あの、お兄さん...ですか？\n...北海道から来た、雪村かおりです...',
       expression: 'shy' as const,
     },
     {
       speaker: 'かおり',
-      text: '...あっ、今「なまら」って言った？\n...聞かなかったことにして...',
+      text: '...すみません、急に一人で観光することになって...\nおばさん、どうしても外せない用事ができたみたいで...',
       expression: 'shy' as const,
     },
-    // Scene 4: Kaori's background
+    {
+      speaker: 'かおり',
+      text: '...えっと、ご迷惑でなければ...\n今日、一緒に回っていただけますか...',
+      expression: 'shy' as const,
+    },
+    // Scene 4: Kaori's background (through narration)
     {
       speaker: '',
-      text: '雪村かおり、17歳。高校2年生。\n小樽で生まれ育った、北国の少女。',
+      text: '彼女は北海道の小樽から来たらしい。\n初めての九州旅行の最終日。',
       expression: 'neutral' as const,
     },
     {
       speaker: '',
-      text: 'おとなしくて人見知りだけど、\n綺麗なものを見ると目を輝かせる。',
-      expression: 'neutral' as const,
-    },
-    {
-      speaker: '',
-      text: '今日は一人で福岡まで来たらしい。\n初めての九州、初めての一人旅。',
+      text: 'おとなしくて人見知りだけど、\n綺麗なものを見ると目を輝かせる。\n...そんな子だと、母さんから聞いていた。',
       expression: 'neutral' as const,
     },
     // Scene 5: Establishing connection
     {
       speaker: 'かおり',
-      text: '...福岡って、暖かいね。\n小樽は今頃、雪だよ...',
+      text: '...こっちは暖かいですね。\n小樽は今頃、雪がなまら...あっ',
       expression: 'neutral' as const,
     },
     {
       speaker: 'かおり',
-      text: '...ね、おにいちゃん。\n福岡のクリスマスって、どんな感じ？',
+      text: '...今の、聞かなかったことにしてください...',
+      expression: 'shy' as const,
+    },
+    {
+      speaker: 'かおり',
+      text: '...あの、お兄さん。\nクリスマスって、どんな感じですか...ここは',
       expression: 'thinking' as const,
     },
     {
       speaker: 'かおり',
-      text: '...イルミネーション、見てみたい。\n...ラーメンも...食べてみたい...',
+      text: '...イルミネーション、見てみたいです。\n...あと、ラーメンも...食べてみたい...',
       expression: 'shy' as const,
     },
     // Scene 6: Game premise
     {
       speaker: '',
-      text: '彼女の瞳には、期待と不安が入り混じっている。\n知らない街で、知らない人と過ごすクリスマス。',
+      text: '彼女の瞳には、期待と不安が入り混じっている。\n知らない街で、初めて会う従兄弟と過ごすクリスマス。',
       expression: 'neutral' as const,
     },
     {
       speaker: '',
-      text: 'でも、その眼差しの奥には、\nどこか寂しげな影も見えた気がした。',
+      text: 'でも、その眼差しの奥には、\nどこか楽しみにしているような光も見えた。',
       expression: 'neutral' as const,
     },
     // Scene 7: The promise
     {
       speaker: 'かおり',
-      text: '...あの、おにいちゃん。\n今日...一緒にいてくれる？',
+      text: '...あの、お兄さん。\n今日...よろしくお願いします。',
       expression: 'shy' as const,
     },
     {
       speaker: '',
-      text: 'かおりとの、9時間のクリスマスデートが始まる。\n福岡の街を巡って、最高の思い出を作ろう。',
+      text: 'かおりとの、9時間のクリスマスが始まる。\n街を巡って、最高の思い出を作ろう。',
       expression: 'happy' as const,
     },
   ];

@@ -1,4 +1,4 @@
-import { KAORI_SYSTEM_PROMPT } from '../constants/character';
+import { generateKaoriSystemPrompt } from '../constants/character';
 import { KaoriExpression } from '../components/CharacterDisplay';
 
 // OpenRouter API configuration
@@ -88,15 +88,20 @@ function removeEmotionTags(text: string): string {
 export async function sendChatMessage(
   userMessage: string,
   conversationHistory: ChatMessage[] = [],
-  apiKey?: string
+  apiKey?: string,
+  affection: number = 1,
+  nickname: string = 'お兄さん'
 ): Promise<AIResponse> {
   // If no API key, return a default response
   if (!apiKey) {
     return getDefaultResponse(userMessage);
   }
 
+  // Generate dynamic system prompt based on affection level
+  const systemPrompt = generateKaoriSystemPrompt(affection, nickname);
+
   const messages: ChatMessage[] = [
-    { role: 'system', content: KAORI_SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     ...conversationHistory,
     { role: 'user', content: userMessage },
   ];
