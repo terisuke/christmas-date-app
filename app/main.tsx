@@ -305,51 +305,57 @@ export default function MainScreen() {
         </View>
       </View>
 
-      {/* Character Display Area - Faded when keyboard visible */}
-      <View style={[styles.characterArea, keyboardVisible && styles.characterAreaFaded]}>
-        <CharacterDisplay expression={currentExpression} />
-      </View>
+      {/* Main Content Area - Flex layout for dedicated zones */}
+      <View style={styles.mainContent}>
+        {/* Character Zone - Shows bust-up (upper portion) with overflow hidden */}
+        <View style={[styles.characterZone, keyboardVisible && styles.characterAreaFaded]}>
+          <CharacterDisplay expression={currentExpression} />
+        </View>
 
-      {/* Dialogue Box - Hidden when keyboard visible */}
-      {!keyboardVisible && (
-        <View style={styles.dialogueBox}>
-          <Text style={styles.speakerName}>かおり</Text>
-          <Text style={styles.dialogueText}>
-            「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
-          </Text>
-          {isLoading && (
-            <View style={styles.typingIndicator}>
-              <ActivityIndicator size="small" color="#ff4757" />
-              <Text style={styles.typingText}>入力中...</Text>
+        {/* Dialogue Zone - Dedicated space for dialogue and input */}
+        <View style={styles.dialogueZone}>
+          {/* Dialogue Box */}
+          {!keyboardVisible && (
+            <View style={styles.dialogueBox}>
+              <Text style={styles.speakerName}>かおり</Text>
+              <Text style={styles.dialogueText}>
+                「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
+              </Text>
+              {isLoading && (
+                <View style={styles.typingIndicator}>
+                  <ActivityIndicator size="small" color="#ff4757" />
+                  <Text style={styles.typingText}>入力中...</Text>
+                </View>
+              )}
             </View>
           )}
-        </View>
-      )}
 
-      {/* Chat Input - Positioned absolutely above keyboard */}
-      <View style={[
-        styles.chatInputContainer,
-        { bottom: keyboardVisible ? keyboardHeight + 10 : 30 }
-      ]}>
-        <TextInput
-          ref={inputRef}
-          style={styles.chatInput}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="かおりに話しかける..."
-          placeholderTextColor="#999"
-          maxLength={100}
-          editable={!isLoading}
-          onSubmitEditing={handleSendMessage}
-          returnKeyType="send"
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-          onPress={handleSendMessage}
-          disabled={!inputText.trim() || isLoading}
-        >
-          <Ionicons name="send" size={20} color="#fff" />
-        </TouchableOpacity>
+          {/* Chat Input - Inside dialogue zone */}
+          <View style={[
+            styles.chatInputContainer,
+            keyboardVisible && { marginBottom: keyboardHeight }
+          ]}>
+            <TextInput
+              ref={inputRef}
+              style={styles.chatInput}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="かおりに話しかける..."
+              placeholderTextColor="#999"
+              maxLength={100}
+              editable={!isLoading}
+              onSubmitEditing={handleSendMessage}
+              returnKeyType="send"
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
+              onPress={handleSendMessage}
+              disabled={!inputText.trim() || isLoading}
+            >
+              <Ionicons name="send" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       {/* Side Menu */}
@@ -495,33 +501,36 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginLeft: 6,
   },
-  characterArea: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  // Dedicated zones layout (Mystic Messenger pattern)
+  mainContent: {
+    flex: 1,
+    marginTop: 50, // Space below badges
+  },
+  characterZone: {
+    flex: 0.55,
+    overflow: 'hidden',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    zIndex: 1,
+    justifyContent: 'flex-start', // Start from top to show bust-up (clip legs at bottom)
   },
   characterAreaFaded: {
     opacity: 0.4,
   },
+  dialogueZone: {
+    flex: 0.45,
+    paddingHorizontal: 20,
+    justifyContent: 'flex-end',
+    paddingBottom: 20,
+  },
   dialogueBox: {
-    position: 'absolute',
-    bottom: 100, // Space for chat input
-    left: 20,
-    right: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 15,
     padding: 20,
-    minHeight: 100,
+    marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
-    zIndex: 10,
   },
   speakerName: {
     fontSize: 14,
@@ -545,12 +554,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   chatInputContainer: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 20,
   },
   chatInput: {
     flex: 1,
