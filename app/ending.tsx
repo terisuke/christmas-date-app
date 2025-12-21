@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/contexts/GameContext';
@@ -64,12 +64,8 @@ export default function EndingScreen() {
   };
 
   return (
-    <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400' }}
-      style={styles.container}
-      resizeMode="cover"
-    >
-      <View style={[styles.overlay, { backgroundColor: getBackgroundColor() }]}>
+    <View style={[styles.container, { backgroundColor: getBackgroundColor() }]}>
+      <View style={styles.overlay}>
         <Animated.View
           style={[
             styles.endingContainer,
@@ -131,7 +127,7 @@ export default function EndingScreen() {
           </View>
         </Animated.View>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 

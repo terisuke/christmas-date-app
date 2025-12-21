@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ImageBackground,
   Animated,
   Dimensions,
   TextInput,
@@ -22,11 +21,11 @@ import { sendChatMessage, getOpenRouterApiKey } from '../src/services/ai';
 
 const { width } = Dimensions.get('window');
 
-// Time-based backgrounds
+// Time-based background colors (solid colors for faster loading)
 const TIME_BACKGROUNDS = {
-  morning: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=800',
-  afternoon: 'https://images.unsplash.com/photo-1544042259-ea9a0dd2b891?w=800',
-  night: 'https://images.unsplash.com/photo-1545580492-8859ba8323f9?w=800',
+  morning: '#E8F4FD', // Light blue morning sky
+  afternoon: '#FFF8E7', // Warm afternoon
+  night: '#1a1a2e', // Dark night sky
 };
 
 // Kaori dialogue based on state
@@ -259,11 +258,7 @@ export default function MainScreen() {
 
   return (
     <View style={styles.container}>
-      <ImageBackground
-        source={{ uri: TIME_BACKGROUNDS[timeOfDay] }}
-        style={styles.background}
-        resizeMode="cover"
-      >
+      <View style={[styles.background, { backgroundColor: TIME_BACKGROUNDS[timeOfDay] }]}>
         {/* Overlay */}
         <View style={styles.overlay}>
           {/* Status Bar with Menu Button */}
@@ -378,7 +373,7 @@ export default function MainScreen() {
             />
           )}
         </View>
-      </ImageBackground>
+      </View>
     </View>
   );
 }
