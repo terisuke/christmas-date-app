@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
 import { useGame } from '../src/contexts/GameContext';
@@ -33,11 +33,7 @@ export default function Index() {
   }, [showSplash, isLoaded, isSignedIn, gameStartedAt, user]);
 
   return (
-    <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1544042259-ea9a0dd2b891?w=400' }}
-      style={styles.container}
-      resizeMode="cover"
-    >
+    <View style={styles.container}>
       <View style={styles.overlay}>
         <Text style={styles.title}>かおりと福岡クリスマス</Text>
         <Text style={styles.subtitle}>Christmas Date in Fukuoka</Text>
@@ -54,17 +50,18 @@ export default function Index() {
           <Text style={styles.infoText}>目標：かおりとの好感度を上げよう!</Text>
         </View>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#ff4757', // Christmas red
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

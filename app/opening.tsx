@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ImageBackground, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay from '../src/components/CharacterDisplay';
@@ -146,11 +146,7 @@ export default function OpeningScreen() {
 
   if (!showStory) {
     return (
-      <ImageBackground
-        source={{ uri: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400' }}
-        style={styles.container}
-        resizeMode="cover"
-      >
+      <View style={styles.container}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -183,7 +179,7 @@ export default function OpeningScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-      </ImageBackground>
+      </View>
     );
   }
 
@@ -224,6 +220,7 @@ export default function OpeningScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#E8F4FD', // Morning sky
   },
   keyboardView: {
     flex: 1,
