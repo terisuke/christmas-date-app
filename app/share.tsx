@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
-import * as FileSystem from 'expo-file-system';
+import { Paths, File } from 'expo-file-system';
+import { Asset } from 'expo-asset';
 import { useGame } from '../src/contexts/GameContext';
 import { getEndingData, getEndingCategory } from '../src/constants/endings';
 import { getEndingCG, EndingCGCategory } from '../src/constants/backgrounds';
@@ -173,9 +174,9 @@ ${ending.title}: ${ending.subtitle}
     }
   };
 
-  // Save CG with results overlay to device
+  // Save raw CG image (without overlays) to device
   const saveCGToDevice = async () => {
-    if (!cgRef.current || isSavingCG) return;
+    if (!endingCG || isSavingCG) return;
 
     setIsSavingCG(true);
     try {
@@ -187,13 +188,26 @@ ${ending.title}: ${ending.subtitle}
         return;
       }
 
-      const uri = await captureRef(cgRef, {
-        format: 'png',
-        quality: 1,
-      });
+      // Load the asset to get its local URI
+      // endingCG is a number from require() in React Native
+      const asset = Asset.fromModule(endingCG as number);
+      await asset.downloadAsync();
 
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('保存完了', 'エンディングCGを保存しました');
+      if (!asset.localUri) {
+        throw new Error('Failed to get local URI for CG');
+      }
+
+      // Copy to a temporary file with proper extension (MediaLibrary needs this)
+      const filename = `ending_${endingCategory.toLowerCase()}_${Date.now()}.jpg`;
+      const sourceFile = new File(asset.localUri);
+      const tempFile = new File(Paths.cache, filename);
+      await sourceFile.copy(tempFile);
+
+      await MediaLibrary.saveToLibraryAsync(tempFile.uri);
+      Alert.alert('保存完了', 'エンディングCG（原寸）を保存しました');
+
+      // Clean up temp file
+      await tempFile.delete();
     } catch (error) {
       console.error('Save CG error:', error);
       Alert.alert('保存エラー', 'CGの保存に失敗しました');
@@ -276,7 +290,7 @@ ${ending.title}: ${ending.subtitle}
               ) : (
                 <Ionicons name="download" size={20} color="#fff" />
               )}
-              <Text style={styles.cgButtonText}>CG保存</Text>
+              <Text style={styles.cgButtonText}>原寸保存</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -289,7 +303,7 @@ ${ending.title}: ${ending.subtitle}
               ) : (
                 <Ionicons name="share-social" size={20} color="#fff" />
               )}
-              <Text style={styles.cgButtonText}>CGシェア</Text>
+              <Text style={styles.cgButtonText}>SNSシェア</Text>
             </TouchableOpacity>
           </View>
         )}
