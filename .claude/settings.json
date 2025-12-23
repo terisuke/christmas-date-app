@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch(domain:docs.expo.dev)",
+      "WebFetch(domain:expo.dev)",
+      "WebFetch(domain:reactnative.dev)",
+      "WebFetch(domain:clerk.com)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm test:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx expo:*)",
+      "Bash(npx expo-doctor)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh run:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf .)",
+      "Bash(git push --force)",
+      "Bash(git reset --hard)"
+    ]
+  }
+}

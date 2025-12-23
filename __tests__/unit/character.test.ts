@@ -1,4 +1,14 @@
-import { KAORI_ENDINGS, SPOT_DATA, KAORI_SPOT_REACTIONS, KAORI_SYSTEM_PROMPT } from '../../src/constants/character';
+import {
+  KAORI_ENDINGS,
+  SPOT_DATA,
+  KAORI_SPOT_REACTIONS,
+  KAORI_SYSTEM_PROMPT,
+  getAddressPattern,
+  getSpeechStyle,
+  generateKaoriSystemPrompt,
+  isSpotAvailableNow,
+  getSpotUnavailableReason,
+} from '../../src/constants/character';
 
 describe('Character Constants', () => {
   describe('KAORI_ENDINGS', () => {
@@ -123,4 +133,263 @@ describe('Character Constants', () => {
       expect(KAORI_SYSTEM_PROMPT).toContain('なまら');
     });
   });
+
+  describe('getAddressPattern', () => {
+    it('should return お兄さん for affection 1 (ignores nickname)', () => {
+      const pattern = getAddressPattern(1, '太郎');
+      expect(pattern).toBe('お兄さん');
+    });
+
+    it('should return nickname+さん for affection 2', () => {
+      const pattern = getAddressPattern(2, '太郎');
+      expect(pattern).toContain('太郎');
+      expect(pattern).toContain('さん');
+    });
+
+    it('should return nickname+お兄ちゃん for affection 3-4', () => {
+      const pattern3 = getAddressPattern(3, '太郎');
+      const pattern4 = getAddressPattern(4, '太郎');
+      expect(pattern3).toContain('太郎');
+      expect(pattern3).toContain('お兄ちゃん');
+      expect(pattern4).toContain('太郎');
+      expect(pattern4).toContain('お兄ちゃん');
+    });
+
+    it('should return casual pattern (nickname only) for high affection', () => {
+      const pattern = getAddressPattern(5, '太郎');
+      expect(pattern).toBe('太郎');
+    });
+
+    it('should clamp affection within valid range', () => {
+      const patternLow = getAddressPattern(0, 'Test');
+      const patternHigh = getAddressPattern(10, 'Test');
+      expect(patternLow).toBeDefined();
+      expect(patternHigh).toBeDefined();
+    });
+  });
+
+  describe('getSpeechStyle', () => {
+    it('should return formal for affection 1-2', () => {
+      expect(getSpeechStyle(1)).toBe('formal');
+      expect(getSpeechStyle(2)).toBe('formal');
+    });
+
+    it('should return transitional for affection 3', () => {
+      expect(getSpeechStyle(3)).toBe('transitional');
+    });
+
+    it('should return transitional for affection 4', () => {
+      expect(getSpeechStyle(4)).toBe('transitional');
+    });
+
+    it('should return casual for affection 5 only', () => {
+      expect(getSpeechStyle(5)).toBe('casual');
+    });
+
+    it('should clamp affection within valid range', () => {
+      expect(getSpeechStyle(0)).toBe('formal');
+      expect(getSpeechStyle(10)).toBe('casual');
+    });
+  });
+
+  describe('generateKaoriSystemPrompt', () => {
+    it('should generate different prompts based on affection level', () => {
+      const lowAffection = generateKaoriSystemPrompt(1, 'ユーザー');
+      const highAffection = generateKaoriSystemPrompt(5, 'ユーザー');
+
+      expect(lowAffection).not.toBe(highAffection);
+    });
+
+    it('should include nickname in the prompt', () => {
+      const prompt = generateKaoriSystemPrompt(3, '田中さん');
+      expect(prompt).toContain('田中さん');
+    });
+
+    it('should include Kaori character info', () => {
+      const prompt = generateKaoriSystemPrompt(1, 'Test');
+      expect(prompt).toContain('雪村かおり');
+      expect(prompt).toContain('北海道');
+    });
+
+    it('should include speech style instructions', () => {
+      const formalPrompt = generateKaoriSystemPrompt(1, 'Test');
+      const casualPrompt = generateKaoriSystemPrompt(5, 'Test');
+
+      expect(formalPrompt).toContain('敬語');
+      expect(casualPrompt).toContain('タメ口');
+    });
+  });
+
+  describe('isSpotAvailableNow', () => {
+    // Store original Date
+    const RealDate = Date;
+
+    afterEach(() => {
+      // Restore original Date
+      global.Date = RealDate;
+    });
+
+    // Helper to mock JST time (JST = UTC+9)
+    // If we want JST hour 10, we set UTC hour 1 (10 - 9 = 1)
+    const mockJSTHour = (jstHour: number) => {
+      const utcHour = (jstHour - 9 + 24) % 24;
+      global.Date = class extends RealDate {
+        constructor(...args: any[]) {
+          if (args.length === 0) {
+            super();
+            // Override the methods we need
+          } else {
+            // @ts-ignore
+            super(...args);
+          }
+        }
+        getTime() {
+          return new RealDate(2024, 11, 24, utcHour, 0, 0).getTime();
+        }
+        getTimezoneOffset() {
+          return 0; // Pretend we're in UTC
+        }
+      } as any;
+    };
+
+    it('should return true for normal spots without time restrictions', () => {
+      // Normal spots (A-F) should always be available
+      expect(isSpotAvailableNow('A')).toBe(true);
+      expect(isSpotAvailableNow('B')).toBe(true);
+      expect(isSpotAvailableNow('C')).toBe(true);
+      expect(isSpotAvailableNow('D')).toBe(true);
+      expect(isSpotAvailableNow('E')).toBe(true);
+      expect(isSpotAvailableNow('F')).toBe(true);
+    });
+
+    it('should return true for S2 (always available)', () => {
+      mockJSTHour(10); // Day
+      expect(isSpotAvailableNow('S2')).toBe(true);
+
+      mockJSTHour(22); // Night
+      expect(isSpotAvailableNow('S2')).toBe(true);
+    });
+
+    it('should return true for S1 (day_only) during day hours (6:00-17:59)', () => {
+      mockJSTHour(6); // Start of day
+      expect(isSpotAvailableNow('S1')).toBe(true);
+
+      mockJSTHour(12); // Noon
+      expect(isSpotAvailableNow('S1')).toBe(true);
+
+      mockJSTHour(17); // End of day (17:xx)
+      expect(isSpotAvailableNow('S1')).toBe(true);
+    });
+
+    it('should return false for S1 (day_only) during night hours (18:00-5:59)', () => {
+      mockJSTHour(18); // Start of night
+      expect(isSpotAvailableNow('S1')).toBe(false);
+
+      mockJSTHour(22); // Night
+      expect(isSpotAvailableNow('S1')).toBe(false);
+
+      mockJSTHour(3); // Early morning (still night)
+      expect(isSpotAvailableNow('S1')).toBe(false);
+
+      mockJSTHour(5); // Just before day
+      expect(isSpotAvailableNow('S1')).toBe(false);
+    });
+
+    it('should return true for S3 (night_only) during night hours (18:00-5:59)', () => {
+      mockJSTHour(18); // Start of night
+      expect(isSpotAvailableNow('S3')).toBe(true);
+
+      mockJSTHour(22); // Night
+      expect(isSpotAvailableNow('S3')).toBe(true);
+
+      mockJSTHour(3); // Early morning (still night)
+      expect(isSpotAvailableNow('S3')).toBe(true);
+    });
+
+    it('should return false for S3 (night_only) during day hours (6:00-17:59)', () => {
+      mockJSTHour(6); // Start of day
+      expect(isSpotAvailableNow('S3')).toBe(false);
+
+      mockJSTHour(12); // Noon
+      expect(isSpotAvailableNow('S3')).toBe(false);
+
+      mockJSTHour(17); // End of day
+      expect(isSpotAvailableNow('S3')).toBe(false);
+    });
+
+    it('should return false for non-existent spots', () => {
+      expect(isSpotAvailableNow('NonExistent')).toBe(false);
+    });
+  });
+
+  describe('getSpotUnavailableReason', () => {
+    // Store original Date
+    const RealDate = Date;
+
+    afterEach(() => {
+      global.Date = RealDate;
+    });
+
+    const mockJSTHour = (jstHour: number) => {
+      const utcHour = (jstHour - 9 + 24) % 24;
+      global.Date = class extends RealDate {
+        constructor(...args: any[]) {
+          if (args.length === 0) {
+            super();
+          } else {
+            // @ts-ignore
+            super(...args);
+          }
+        }
+        getTime() {
+          return new RealDate(2024, 11, 24, utcHour, 0, 0).getTime();
+        }
+        getTimezoneOffset() {
+          return 0;
+        }
+      } as any;
+    };
+
+    it('should return null for normal spots', () => {
+      expect(getSpotUnavailableReason('A')).toBe(null);
+      expect(getSpotUnavailableReason('B')).toBe(null);
+    });
+
+    it('should return null for S2 (always available)', () => {
+      mockJSTHour(10);
+      expect(getSpotUnavailableReason('S2')).toBe(null);
+
+      mockJSTHour(22);
+      expect(getSpotUnavailableReason('S2')).toBe(null);
+    });
+
+    it('should return null for S1 during day hours', () => {
+      mockJSTHour(12);
+      expect(getSpotUnavailableReason('S1')).toBe(null);
+    });
+
+    it('should return day-only reason for S1 during night hours', () => {
+      mockJSTHour(22);
+      const reason = getSpotUnavailableReason('S1');
+      expect(reason).not.toBe(null);
+      expect(reason).toContain('日中');
+    });
+
+    it('should return null for S3 during night hours', () => {
+      mockJSTHour(22);
+      expect(getSpotUnavailableReason('S3')).toBe(null);
+    });
+
+    it('should return night-only reason for S3 during day hours', () => {
+      mockJSTHour(12);
+      const reason = getSpotUnavailableReason('S3');
+      expect(reason).not.toBe(null);
+      expect(reason).toContain('18時以降');
+    });
+
+    it('should return null for non-existent spots', () => {
+      expect(getSpotUnavailableReason('NonExistent')).toBe(null);
+    });
+  });
+
 });

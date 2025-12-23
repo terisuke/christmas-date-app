@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../../src/contexts/GameContext';
-import { SPOT_DATA, KAORI_SPOT_REACTIONS } from '../../src/constants/character';
+import { SPOT_DATA, KAORI_SPOT_REACTIONS, isSpotAvailableNow, getSpotUnavailableReason } from '../../src/constants/character';
 import CharacterDisplay from '../../src/components/CharacterDisplay';
 
 export default function SpotDetailScreen() {
@@ -34,9 +34,18 @@ export default function SpotDetailScreen() {
     );
   }
 
+  const isTimeAvailable = isSpotAvailableNow(id || '');
+  const unavailableReason = getSpotUnavailableReason(id || '');
+
   const handleCheckIn = () => {
     if (isAlreadyCheckedIn) {
       Alert.alert('チェックイン済み', `${spot.name}は既にチェックイン済みです`);
+      return;
+    }
+
+    // Check time restriction for secret spots
+    if (!isTimeAvailable) {
+      Alert.alert('時間外です', unavailableReason || 'このスポットは現在チェックインできません');
       return;
     }
 
@@ -85,6 +94,14 @@ export default function SpotDetailScreen() {
           </View>
         </View>
 
+        {/* Time Restriction Warning */}
+        {!isTimeAvailable && unavailableReason && (
+          <View style={styles.timeRestrictionWarning}>
+            <Ionicons name="time-outline" size={20} color="#ff9800" />
+            <Text style={styles.timeRestrictionText}>{unavailableReason}</Text>
+          </View>
+        )}
+
         {/* Check-in Button */}
         {isAlreadyCheckedIn ? (
           <View style={styles.checkedInContainer}>
@@ -92,9 +109,14 @@ export default function SpotDetailScreen() {
             <Text style={styles.checkedInText}>チェックイン済み</Text>
           </View>
         ) : (
-          <TouchableOpacity style={styles.checkInButton} onPress={handleCheckIn}>
+          <TouchableOpacity
+            style={[styles.checkInButton, !isTimeAvailable && styles.checkInButtonDisabled]}
+            onPress={handleCheckIn}
+          >
             <Ionicons name="location" size={24} color="#fff" />
-            <Text style={styles.checkInButtonText}>チェックインしてイベントを見る</Text>
+            <Text style={styles.checkInButtonText}>
+              {isTimeAvailable ? 'チェックインしてイベントを見る' : '時間外'}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -205,7 +227,10 @@ const styles = StyleSheet.create({
   },
   characterArea: {
     alignItems: 'center',
+    justifyContent: 'flex-start',
     marginBottom: 20,
+    height: 180,
+    overflow: 'hidden',
   },
   previewDialogue: {
     backgroundColor: '#fff',
@@ -272,5 +297,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#388e3c',
     lineHeight: 18,
+  },
+  timeRestrictionWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ff9800',
+  },
+  timeRestrictionText: {
+    fontSize: 14,
+    color: '#ff9800',
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  checkInButtonDisabled: {
+    backgroundColor: '#999',
   },
 });

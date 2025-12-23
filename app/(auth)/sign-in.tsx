@@ -106,7 +106,7 @@ export default function SignInScreen() {
       >
         <View style={styles.content}>
           <Text style={styles.title}>ログイン</Text>
-          <Text style={styles.subtitle}>かおりと福岡クリスマス</Text>
+          <Text style={styles.subtitle}>雪の降らない聖夜に</Text>
 
           <View style={styles.form}>
             {/* Google OAuth Button */}

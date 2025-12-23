@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Location from 'expo-location';
-import { SPOT_DATA } from '../constants/character';
-import { TimeOfDay } from '../constants/backgrounds';
+import { SPOT_DATA, isSpotAvailableNow, getSpotUnavailableReason } from '../constants/character';
+import { TimeOfDay, getCurrentTimeOfDay } from '../constants/backgrounds';
 
 interface SpotInfo {
   id: string;
@@ -10,6 +10,8 @@ interface SpotInfo {
   lat: number;
   lng: number;
   is_secret: boolean;
+  isAvailableNow: boolean; // Time-based availability
+  unavailableReason: string | null; // Reason if not available
 }
 
 // Approach proximity thresholds
@@ -56,25 +58,15 @@ function getDistanceFromLatLng(
   return R * c;
 }
 
-// Get time of day (day or night based on JST)
-function getTimeOfDay(): TimeOfDay {
-  // Get JST time (UTC+9)
-  const now = new Date();
-  const jstOffset = 9 * 60; // JST is UTC+9
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const jst = new Date(utc + jstOffset * 60000);
-  const hour = jst.getHours();
-
-  // Day: 6:00-17:59, Night: 18:00-5:59
-  return hour >= 6 && hour < 18 ? 'day' : 'night';
-}
+// Re-export time of day function from backgrounds.ts for consistency
+// Day: 6:00-17:59 JST, Night: 18:00-5:59 JST (threshold at 18:00)
 
 // Maximum distance to consider a spot "nearby" (500 meters)
 const NEARBY_THRESHOLD_METERS = 500;
 
 export function useNearestSpot(): UseNearestSpotResult {
   const [nearestSpot, setNearestSpot] = useState<SpotInfo | null>(null);
-  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(getTimeOfDay);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(getCurrentTimeOfDay);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [locationEnabled, setLocationEnabled] = useState(false);
@@ -114,6 +106,8 @@ export function useNearestSpot(): UseNearestSpotResult {
             lat: spot.lat,
             lng: spot.lng,
             is_secret: spot.is_secret,
+            isAvailableNow: isSpotAvailableNow(spot.id),
+            unavailableReason: getSpotUnavailableReason(spot.id),
           };
         }
       }
@@ -199,7 +193,7 @@ export function useNearestSpot(): UseNearestSpotResult {
     // Update time of day every minute
     const timeInterval = setInterval(() => {
       if (isMounted) {
-        setTimeOfDay(getTimeOfDay());
+        setTimeOfDay(getCurrentTimeOfDay());
       }
     }, 60000);
 

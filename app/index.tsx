@@ -1,13 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { router } from 'expo-router';
 import { useGame } from '../src/contexts/GameContext';
+import { useBGM } from '../src/contexts/BGMContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function Index() {
   const { isSignedIn, isLoaded } = useAuth();
   const { gameStartedAt, user } = useGame();
+  const { playBGM } = useBGM();
   const [showSplash, setShowSplash] = useState(true);
+
+  // Navigate to debug screen (only available in __DEV__ mode)
+  const goToDebug = () => {
+    router.push('/debug' as any);
+  };
+
+  // Play title BGM on mount
+  useEffect(() => {
+    playBGM('title');
+  }, [playBGM]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -35,8 +48,16 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <View style={styles.overlay}>
-        <Text style={styles.title}>かおりと福岡クリスマス</Text>
-        <Text style={styles.subtitle}>Christmas Date in Fukuoka</Text>
+        {/* Debug button - only visible in development mode */}
+        {__DEV__ && (
+          <TouchableOpacity style={styles.debugButton} onPress={goToDebug}>
+            <Ionicons name="bug" size={20} color="#fff" />
+            <Text style={styles.debugButtonText}>DEV</Text>
+          </TouchableOpacity>
+        )}
+
+        <Text style={styles.title}>雪の降らない聖夜に</Text>
+        <Text style={styles.subtitle}>A Christmas Eve Without Snow</Text>
 
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#fff" />
@@ -65,6 +86,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  debugButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    backgroundColor: 'rgba(255, 152, 0, 0.9)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 100,
+  },
+  debugButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 6,
   },
   title: {
     fontSize: 28,

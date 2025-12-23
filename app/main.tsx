@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay from '../src/components/CharacterDisplay';
 import { KaoriExpression } from '../src/components/CharacterDisplay';
+import { AchievementNotification } from '../src/components/AchievementNotification';
+import { TextLogModal } from '../src/components/TextLogModal';
 import { sendChatMessage, getOpenRouterApiKey } from '../src/services/ai';
+import { logDialogue, logChoice } from '../src/services/textLogStorage';
+import { useBGM, BGMTrack } from '../src/contexts/BGMContext';
 import {
   saveChatHistory,
   loadChatHistory,
@@ -93,6 +97,9 @@ export default function MainScreen() {
     chatCount,
     incrementChatCount,
     addScore,
+    newlyUnlockedAchievements,
+    dismissAchievementNotification,
+    stepsToday,
   } = useGame();
 
   // GPS-based location tracking with approach detection
@@ -107,6 +114,9 @@ export default function MainScreen() {
     clearApproachFlag,
     clearCheckInFlag,
   } = useNearestSpot();
+
+  // BGM control
+  const { fadeToTrack, currentTrack } = useBGM();
 
   // Activity tracking (steps, distance)
   const { metrics, isTracking, startTracking } = useActivityTracking();
@@ -129,6 +139,10 @@ export default function MainScreen() {
   // Keyboard state
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Text log modal state
+  const [textLogVisible, setTextLogVisible] = useState(false);
+  const lastLoggedDialogue = useRef<string>('');
 
   // Step bonus animation state
   const [lastStepBonus, setLastStepBonus] = useState(0);
@@ -309,21 +323,55 @@ export default function MainScreen() {
   const CHAT_EXPRESSION_INTERVAL = 2; // Change expression every 2-3 messages
 
   // Map GPS timeOfDay (day/night) to CharacterDisplay format (morning/afternoon/night)
-  const getCharacterTimeOfDay = (): 'morning' | 'afternoon' | 'night' => {
+  const characterTimeOfDay = useMemo((): 'morning' | 'afternoon' | 'night' => {
     const hour = new Date().getHours();
     if (hour >= 6 && hour < 12) return 'morning';
     if (hour >= 12 && hour < 18) return 'afternoon';
     return 'night';
-  };
+  }, []);
 
-  const characterTimeOfDay = getCharacterTimeOfDay();
+  // Get background based on nearest spot and time of day (memoized)
+  const backgroundImage = useMemo(
+    () => getSpotBackground(nearestSpot?.id || null, gpsTimeOfDay),
+    [nearestSpot?.id, gpsTimeOfDay]
+  );
+  const fallbackColor = useMemo(
+    () => getFallbackColor(gpsTimeOfDay),
+    [gpsTimeOfDay]
+  );
 
-  // Get background based on nearest spot and time of day
-  const backgroundImage = getSpotBackground(nearestSpot?.id || null, gpsTimeOfDay);
-  const fallbackColor = getFallbackColor(gpsTimeOfDay);
+  // Calculate idle time (with interval for updates)
+  const [lastActiveMinutes, setLastActiveMinutes] = useState(0);
+  useEffect(() => {
+    const updateIdleTime = () => {
+      setLastActiveMinutes(Math.floor((Date.now() - lastActiveTime) / (1000 * 60)));
+    };
+    updateIdleTime();
+    const interval = setInterval(updateIdleTime, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [lastActiveTime]);
 
-  // Calculate idle time
-  const lastActiveMinutes = Math.floor((Date.now() - lastActiveTime) / (1000 * 60));
+  // BGM management based on game state
+  useEffect(() => {
+    const hoursLeft = timeRemaining / (1000 * 60 * 60);
+
+    // Determine appropriate BGM track
+    let targetTrack: BGMTrack = 'daily';
+
+    // Sad BGM for urgent/negative states (priority)
+    if (hoursLeft < 1 || lastActiveMinutes >= 60) {
+      targetTrack = 'sad';
+    }
+    // Romantic BGM for high affection
+    else if (affection >= 4) {
+      targetTrack = 'romantic';
+    }
+
+    // Only change if different from current
+    if (targetTrack !== currentTrack) {
+      fadeToTrack(targetTrack);
+    }
+  }, [affection, timeRemaining, lastActiveMinutes, currentTrack, fadeToTrack]);
 
   // Update expression based on game state with rate limiting
   useEffect(() => {
@@ -360,6 +408,26 @@ export default function MainScreen() {
     }
   }, [affection, timeRemaining, lastActiveMinutes, currentExpression, lastExpressionChange]);
 
+  // Auto-reset expression to neutral after 30 seconds (unless sad/priority state)
+  useEffect(() => {
+    // Don't reset if already neutral or in priority state
+    if (currentExpression === 'neutral') return;
+    if (lastActiveMinutes >= 60) return; // Keep sad expression when idle
+    if (timeRemaining < 1000 * 60 * 60) return; // Keep sad when time is running out
+
+    const resetTimer = setTimeout(() => {
+      const now = Date.now();
+      const timeSinceChange = now - lastExpressionChange;
+      // Reset to neutral after 30 seconds (currentExpression is guaranteed non-neutral here due to early return above)
+      if (timeSinceChange >= 30000) {
+        setCurrentExpression('neutral');
+        setLastExpressionChange(now);
+      }
+    }, 30000);
+
+    return () => clearTimeout(resetTimer);
+  }, [currentExpression, lastExpressionChange, lastActiveMinutes, timeRemaining]);
+
   // Update last active time on interaction
   useEffect(() => {
     setLastActiveTime(Date.now());
@@ -371,6 +439,17 @@ export default function MainScreen() {
       setCurrentDialogue('');
     }
   }, [lastActiveMinutes, currentDialogue]);
+
+  // Log dialogue to text log when it changes
+  useEffect(() => {
+    const dialogueToLog = currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression, metrics.steps);
+
+    // Only log if dialogue changed and is not empty
+    if (dialogueToLog && dialogueToLog !== lastLoggedDialogue.current) {
+      lastLoggedDialogue.current = dialogueToLog;
+      logDialogue('かおり', dialogueToLog, currentExpression, 'main');
+    }
+  }, [currentDialogue, currentExpression, timeRemaining, lastActiveMinutes, checkInCount, metrics.steps]);
 
   // Keyboard listener
   useEffect(() => {
@@ -392,8 +471,8 @@ export default function MainScreen() {
     };
   }, []);
 
-  // Menu animation
-  const toggleMenu = () => {
+  // Menu animation (memoized)
+  const toggleMenu = useCallback(() => {
     const toValue = menuOpen ? -250 : 0;
     Animated.spring(slideAnim, {
       toValue,
@@ -402,7 +481,7 @@ export default function MainScreen() {
       friction: 11,
     }).start();
     setMenuOpen(!menuOpen);
-  };
+  }, [menuOpen, slideAnim]);
 
   // Chat handler
   const handleSendMessage = async () => {
@@ -420,6 +499,9 @@ export default function MainScreen() {
     };
     const newHistory = [...conversationHistory, userMsg];
     setConversationHistory(newHistory);
+
+    // Log user message to text log
+    logChoice(userMessage, 'main');
 
     try {
       const apiKey = getOpenRouterApiKey();
@@ -500,10 +582,11 @@ export default function MainScreen() {
     { icon: 'stats-chart', label: 'ステータス', route: '/status' },
     { icon: 'map', label: 'マップ', route: '/map' },
     { icon: 'chatbubbles', label: 'チャット', route: '/chat' },
+    { icon: 'document-text', label: 'ログ', route: null, action: () => setTextLogVisible(true) },
+    { icon: 'trophy', label: 'アチーブメント', route: '/achievements' },
     { icon: 'images', label: 'ギャラリー', route: '/gallery' },
     { icon: 'book', label: 'プロローグ', route: '/opening?replay=true' },
     { icon: 'settings', label: '設定', route: '/settings' },
-    { icon: 'document-text', label: 'クレジット', route: '/credits' },
   ];
 
   // Render content inside background
@@ -687,7 +770,11 @@ export default function MainScreen() {
             style={styles.menuItem}
             onPress={() => {
               toggleMenu();
-              router.push(item.route as any);
+              if (item.action) {
+                item.action();
+              } else if (item.route) {
+                router.push(item.route as any);
+              }
             }}
           >
             <Ionicons name={item.icon as any} size={24} color="#333" />
@@ -722,6 +809,18 @@ export default function MainScreen() {
           {renderContent()}
         </View>
       )}
+
+      {/* Achievement Notification */}
+      <AchievementNotification
+        achievements={newlyUnlockedAchievements}
+        onDismiss={dismissAchievementNotification}
+      />
+
+      {/* Text Log Modal */}
+      <TextLogModal
+        visible={textLogVisible}
+        onClose={() => setTextLogVisible(false)}
+      />
     </View>
   );
 }
@@ -853,7 +952,7 @@ const styles = StyleSheet.create({
   // Steps Badge Styles
   stepsBadge: {
     position: 'absolute',
-    top: 155,
+    top: 175,
     right: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 12,
@@ -912,7 +1011,7 @@ const styles = StyleSheet.create({
   // VN Standard Layout - Character as background layer, UI overlays on top
   characterLayer: {
     position: 'absolute',
-    bottom: 220, // Position above the bottom UI area
+    bottom: 180, // Position above the bottom UI area (lowered for better grounding)
     left: 0,
     right: 0,
     alignItems: 'center',

@@ -4,7 +4,7 @@
 
 ## プロジェクト概要
 
-**かおりと福岡クリスマス** - クリスマスデートシミュレーションゲーム
+**雪の降らない聖夜に** - クリスマスデートシミュレーションゲーム
 - Expo SDK 54 / React Native
 - TypeScript + Expo Router
 - Clerk 認証 + Supabase バックエンド

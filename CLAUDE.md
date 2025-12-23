@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Christmas date simulation game ("かおりと福岡クリスマス") built with Expo/React Native. The player explores Fukuoka's Christmas spots with their cousin "Kaori" (雪村かおり), earning points through check-ins and building affection through dialogue choices.
+A Christmas date simulation game ("雪の降らない聖夜に") built with Expo/React Native. The player explores Fukuoka's Christmas spots with their cousin "Kaori" (雪村かおり), earning points through check-ins and building affection through dialogue choices.
 
 ## Commands
 

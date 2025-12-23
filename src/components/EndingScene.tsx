@@ -6,14 +6,19 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  ImageBackground,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { EndingData } from '../constants/endings';
 import CharacterDisplay from './CharacterDisplay';
+import { ENDING_BACKGROUND, getEndingCG } from '../constants/backgrounds';
+import { logDialogue, logNarration } from '../services/textLogStorage';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type PlayMode = 'normal' | 'auto' | 'skip';
+type ScenePhase = 'dialogue' | 'cg' | 'result';
 
 interface EndingSceneProps {
   endingData: EndingData;
@@ -25,16 +30,18 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
-  const [isSceneComplete, setIsSceneComplete] = useState(false);
+  const [scenePhase, setScenePhase] = useState<ScenePhase>('dialogue');
   const [playMode, setPlayMode] = useState<PlayMode>('normal');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const cgFadeAnim = useRef(new Animated.Value(0)).current;
   const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const dialogues = endingData.dialogues;
   const currentDialogue = dialogues[dialogueIndex];
+  const endingCG = getEndingCG(endingData.category);
 
   // Replace {nickname} placeholder in text
   const processText = useCallback((text: string): string => {
@@ -56,6 +63,20 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
       }),
     ]).start();
   }, [fadeAnim, slideAnim]);
+
+  // Log dialogue to text log when dialogue index changes
+  useEffect(() => {
+    if (!currentDialogue) return;
+
+    const text = processText(currentDialogue.text);
+    const scene = `ending_${endingData.id}`;
+
+    if (currentDialogue.speaker) {
+      logDialogue(currentDialogue.speaker, text, currentDialogue.expression, scene);
+    } else {
+      logNarration(text, scene);
+    }
+  }, [dialogueIndex, currentDialogue, processText, endingData.id]);
 
   // Typewriter effect
   useEffect(() => {
@@ -86,9 +107,35 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
     return () => clearInterval(typingInterval);
   }, [dialogueIndex, currentDialogue, processText, playMode]);
 
+  // Animate CG fade in
+  const showCGWithAnimation = useCallback(() => {
+    setScenePhase('cg');
+    setPlayMode('normal'); // Reset mode when entering CG phase
+    Animated.timing(cgFadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  }, [cgFadeAnim]);
+
+  // Advance to next dialogue or complete scene
+  const advanceDialogue = useCallback(() => {
+    if (dialogueIndex < dialogues.length - 1) {
+      setDialogueIndex((prev) => prev + 1);
+    } else {
+      // Dialogue complete - show CG if available, otherwise go to result
+      if (endingCG) {
+        showCGWithAnimation();
+      } else {
+        setScenePhase('result');
+        setPlayMode('normal');
+      }
+    }
+  }, [dialogueIndex, dialogues.length, endingCG, showCGWithAnimation]);
+
   // Auto mode: advance after text is complete
   useEffect(() => {
-    if (playMode === 'auto' && !isTyping && !isSceneComplete) {
+    if (playMode === 'auto' && !isTyping && scenePhase === 'dialogue') {
       autoTimerRef.current = setTimeout(() => {
         advanceDialogue();
       }, 2000); // 2 seconds delay
@@ -99,11 +146,11 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
         clearTimeout(autoTimerRef.current);
       }
     };
-  }, [playMode, isTyping, isSceneComplete, dialogueIndex]);
+  }, [playMode, isTyping, scenePhase, dialogueIndex, advanceDialogue]);
 
   // Skip mode: rapid advance
   useEffect(() => {
-    if (playMode === 'skip' && !isSceneComplete) {
+    if (playMode === 'skip' && scenePhase === 'dialogue') {
       skipTimerRef.current = setInterval(() => {
         advanceDialogue();
       }, 200); // 200ms per dialogue in skip mode
@@ -114,17 +161,7 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
         clearInterval(skipTimerRef.current);
       }
     };
-  }, [playMode, isSceneComplete]);
-
-  // Advance to next dialogue or complete scene
-  const advanceDialogue = useCallback(() => {
-    if (dialogueIndex < dialogues.length - 1) {
-      setDialogueIndex((prev) => prev + 1);
-    } else {
-      setIsSceneComplete(true);
-      setPlayMode('normal'); // Reset mode when scene completes
-    }
-  }, [dialogueIndex, dialogues.length]);
+  }, [playMode, scenePhase, advanceDialogue]);
 
   // Toggle play mode
   const toggleMode = (mode: PlayMode) => {
@@ -149,23 +186,63 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
     }
   };
 
+  // Handle CG tap to advance to result
+  const handleCGTap = () => {
+    setScenePhase('result');
+  };
+
   // Handle continue button
   const handleContinue = () => {
     onComplete();
   };
 
   const isNarration = currentDialogue?.speaker === '';
+  const isDialoguePhase = scenePhase === 'dialogue';
+  const isCGPhase = scenePhase === 'cg';
+  const isResultPhase = scenePhase === 'result';
+
+  // CG Phase - Full screen CG display
+  if (isCGPhase && endingCG) {
+    return (
+      <TouchableOpacity
+        style={styles.cgContainer}
+        onPress={handleCGTap}
+        activeOpacity={1}
+      >
+        <Animated.View style={[styles.cgWrapper, { opacity: cgFadeAnim }]}>
+          <Image
+            source={endingCG}
+            style={styles.cgImage}
+            resizeMode="cover"
+          />
+          {/* Ending title overlay on CG */}
+          <View style={styles.cgTitleOverlay}>
+            <Text style={styles.cgTitle}>{endingData.title}</Text>
+            <Text style={styles.cgSubtitle}>{endingData.subtitle}</Text>
+          </View>
+          {/* Tap indicator */}
+          <View style={styles.cgTapIndicator}>
+            <Text style={styles.cgTapText}>タップで続ける</Text>
+          </View>
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          backgroundColor: endingData.bgColor,
-          opacity: fadeAnim,
-        },
-      ]}
+    <ImageBackground
+      source={ENDING_BACKGROUND}
+      style={styles.container}
+      resizeMode="cover"
     >
+      <Animated.View
+        style={[
+          styles.overlay,
+          {
+            opacity: fadeAnim,
+          },
+        ]}
+      >
       {/* Title Area */}
       <View style={styles.titleArea}>
         <Animated.Text
@@ -188,14 +265,14 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
 
       {/* Character Area - only show when Kaori is speaking */}
       <View style={styles.characterArea}>
-        {currentDialogue?.speaker === 'かおり' && !isSceneComplete && (
+        {currentDialogue?.speaker === 'かおり' && isDialoguePhase && (
           <CharacterDisplay expression={currentDialogue.expression} />
         )}
       </View>
 
       {/* Text/Result Area */}
       <View style={styles.bottomArea}>
-        {isSceneComplete ? (
+        {isResultPhase ? (
           // Final result screen
           <View style={styles.resultContainer}>
             <Text style={styles.finalMessage}>{endingData.finalMessage}</Text>
@@ -230,7 +307,7 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
       </View>
 
       {/* Progress indicator */}
-      {!isSceneComplete && (
+      {isDialoguePhase && (
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
             <View
@@ -247,7 +324,7 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
       )}
 
       {/* Mode Control Buttons */}
-      {!isSceneComplete && (
+      {isDialoguePhase && (
         <View style={styles.modeControlContainer}>
           <TouchableOpacity
             style={[
@@ -294,13 +371,73 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
           </TouchableOpacity>
         </View>
       )}
-    </Animated.View>
+      </Animated.View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  // CG Phase styles
+  cgContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  cgWrapper: {
+    flex: 1,
+  },
+  cgImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    position: 'absolute',
+  },
+  cgTitleOverlay: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  cgTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 6,
+  },
+  cgSubtitle: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    marginTop: 10,
+    fontStyle: 'italic',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
+  },
+  cgTapIndicator: {
+    position: 'absolute',
+    bottom: 50,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  cgTapText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
   titleArea: {
     paddingTop: 60,

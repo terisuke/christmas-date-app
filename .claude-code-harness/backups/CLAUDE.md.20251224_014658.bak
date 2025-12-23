@@ -1,0 +1,90 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+A Christmas date simulation game ("かおりと福岡クリスマス") built with Expo/React Native. The player explores Fukuoka's Christmas spots with their cousin "Kaori" (雪村かおり), earning points through check-ins and building affection through dialogue choices.
+
+## Commands
+
+```bash
+# Development
+npm start              # Start Expo dev server
+npm run ios            # iOS simulator
+npm run android        # Android emulator
+npm run web            # Web browser
+
+# Testing
+npm test               # Run all tests
+npm test -- --watch    # Watch mode
+npm test -- path/to/test.ts  # Single test file
+
+# Code Quality
+npm run typecheck      # TypeScript check (tsc --noEmit)
+npm run lint           # ESLint
+npm run lint:fix       # ESLint with auto-fix
+```
+
+## Architecture
+
+### Routing (Expo Router - file-based)
+```
+app/
+├── _layout.tsx     # Root: ClerkProvider + GameProvider wrapper
+├── index.tsx       # Title screen
+├── opening.tsx     # Prologue story
+├── main.tsx        # Main VN-style gameplay screen (GPS-based backgrounds, chat input)
+├── (auth)/         # Auth routes (sign-in, sign-up)
+├── map.tsx         # Spot list + OpenStreetMap view
+├── spot/[id].tsx   # Dynamic spot detail
+├── event.tsx       # Visual novel event scenes with choices
+├── chat.tsx        # Standalone chat screen
+├── ending.tsx      # Multi-ending (BAD/NORMAL/GOOD/TRUE based on score)
+└── share.tsx       # SNS share functionality
+```
+
+### State Management
+- **GameContext** (`src/contexts/GameContext.tsx`): Central game state (score, affection, checkedInSpots, timeRemaining)
+- Score thresholds: BAD <600, NORMAL <1200, GOOD <1800, TRUE >=1800
+- 9-hour fixed game duration
+- Affection levels 1-5 affect Kaori's speech patterns (formal → casual)
+
+### Key Components
+- **CharacterDisplay** (`src/components/CharacterDisplay.tsx`): Character sprite rendering with expression support (neutral/happy/shy/surprised/sad/thinking), emoji fallback on load failure
+- **useNearestSpot** (`src/hooks/useNearestSpot.ts`): GPS tracking hook with Haversine distance calculation, 500m threshold for spot detection
+- **useActivityTracking** (`src/hooks/useActivityTracking.ts`): Pedometer integration (100 steps = 1 point)
+
+### Data & Constants
+- **SPOT_DATA** (`src/constants/character.ts`): 9 Fukuoka spots (6 normal + 3 secret) with coordinates and event scripts
+- **HONORIFIC_LEVELS**: Affection-based speech pattern system
+- **generateKaoriSystemPrompt()**: Dynamic AI prompt generator based on affection level
+
+### Backend Integration
+- **Supabase** (`src/services/supabase.ts`): PostgreSQL backend for users, spots, checkins, chat_logs
+- **Clerk** (optional): Authentication with 10s timeout fallback to guest mode
+
+## Testing
+
+Tests are in `__tests__/` directory:
+- `unit/`: Core logic tests (character, gameLogic, ai, dependencies)
+- `integration/`: End-to-end flows
+- Setup: `__tests__/setup.ts` mocks console and fetch
+
+## Environment Variables
+
+Required in `.env.local`:
+```
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=  # Optional, enables auth
+```
+
+## Visual Novel UI Pattern
+
+The main screen (`app/main.tsx`) follows visual novel conventions:
+- Bottom dialogue box with speaker name
+- Character sprite positioned above dialogue area
+- GPS-based background switching (day/night, per-spot)
+- Chat input integrated into main UI (no separate screen navigation)
+- Expression parsing: AI responses include `[expression:xxx]` tags

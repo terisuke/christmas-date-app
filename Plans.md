@@ -1,135 +1,72 @@
 # Plans.md - タスク管理
 
-**プロジェクト**: かおりと福岡クリスマス
+**プロジェクト**: 雪の降らない聖夜に
 **現在のブランチ**: `feature/gps-background`
-**最終更新**: 2024-12-24 (Phase 7.4 完了)
+**最終更新**: 2024-12-24 (Phase 8 追加機能完了)
 
 ---
 
-## 🟢 完了済みフェーズ
+## 🟢 完了済みフェーズ（Phase 1-7 アーカイブ済み）
 
-### Phase 1: 基盤構築 `cc:完了`
-- [x] Expo プロジェクト初期化
-- [x] Expo Router セットアップ
-- [x] Supabase 連携
-- [x] 基本画面実装（タイトル、ホーム、マップ、チャット、エンディング）
+<details>
+<summary>Phase 1-7 詳細（クリックで展開）</summary>
 
-### Phase 2: ゲーム機能 `cc:完了`
-- [x] GameContext（グローバル状態管理）
-- [x] スポットチェックイン機能
-- [x] イベントシステム（ノベルゲーム風、選択肢）
-- [x] 歩数カウント連携
-- [x] マルチエンディング（基本版）
+- **Phase 1**: 基盤構築（Expo, Router, Supabase）
+- **Phase 2**: ゲーム機能（GameContext, チェックイン, イベント）
+- **Phase 3**: UI/UX改善, Clerk認証, GPS背景
+- **Phase 4**: マルチシナリオ13種エンディング
+- **Phase 5**: 品質向上（98%カバレッジ, 322テスト）
+- **Phase 6**: AI機能強化（OpenRouter, 会話履歴永続化）
+- **Phase 7**: UX改善（歩数可視化, スポット接近通知, ゲーミフィケーション）
 
-### Phase 3.1: UI/UX 改善 `cc:完了`
-- [x] ビジュアルノベル風 UI（main.tsx）
-- [x] キャラクター表情システム
-- [x] シークレットスポット解放条件
-
-### Phase 3.2: 認証システム `cc:完了`
-- [x] Clerk 認証統合
-- [x] Google OAuth 対応
-- [x] ゲストモード対応
-
-### Phase 3.3: ビジュアル改善 `cc:完了`
-- [x] GPS ベース背景切り替え
-- [x] キャラクタースプライト統合
-- [x] 昼夜システム
-- [x] VN レイアウト最適化
+詳細は `docs/` ディレクトリ参照
+</details>
 
 ---
 
-## 🟢 完了済みフェーズ（続き）
+## 🟢 完了済みフェーズ（最新）
 
-### Phase 4: マルチシナリオ完成 `cc:完了`
+### Phase 8: 追加機能 `cc:完了`
 
-**目標**: 好感度×スコアで13種類のエンディング分岐を実装 ✅
+#### 8.1 画像付きシェア機能 `cc:完了`
+- [x] react-native-view-shot でカード画像キャプチャ
+- [x] expo-sharing で画像シェア
+- [x] エンディングカードにカテゴリバッジ追加
 
-**詳細仕様**: `docs/multi-scenario-spec.md`
-**優先度マトリクス**: `docs/priority_matrix.md`
+#### 8.2 スクリーンショット保存機能 `cc:完了`
+- [x] expo-media-library で端末保存
+- [x] 権限リクエスト処理
+- [x] 保存成功/失敗のフィードバック
 
-#### 4.1 基盤実装 `cc:完了`
-- [x] `src/constants/endings.ts` - 13種類のエンディングデータ定義
-- [x] `GameContext.tsx` - getEndingType() を好感度×スコア対応に更新
-- [x] `src/components/EndingScene.tsx` - エンディング演出コンポーネント
+#### 8.3 アチーブメントシステム `cc:完了`
+- [x] 13種類のアチーブメント定義（common/rare/epic/legendary）
+- [x] AsyncStorage による進捗永続化
+- [x] GameContext 統合（自動アンロック検知）
+- [x] アチーブメント通知コンポーネント
+- [x] アチーブメント一覧画面（app/achievements.tsx）
+- [x] ボーナスポイント付与システム
+- [x] 23件のユニットテスト追加（345テスト合格）
 
-#### 4.2 シナリオ執筆 `cc:完了`
-- [x] BAD END シナリオ（2種: BAD_A, BAD_B）
-- [x] NORMAL END シナリオ（5種: NORMAL_A〜E）
-- [x] GOOD END シナリオ（5種: GOOD_A〜E）
-- [x] TRUE END シナリオ（1種）
-
-#### 4.3 画面実装 `cc:完了`
-- [x] `app/ending.tsx` - 新エンディングシステム対応にリファクタリング
-- [x] タイプライター効果・演出追加
-- [x] 全13分岐のテスト・デバッグ（282テスト合格）
-
-#### 4.4 UX改善 `cc:完了`
-- [x] 好感度の可視化（ハートアイコン）- main.tsx のスコアバッジに実装済み
-- [x] エンディングギャラリー画面 - app/gallery.tsx, app/gallery-detail.tsx
-- [x] スキップ機能（AUTO/SKIP モード）- EndingScene.tsx に実装
-
----
-
-## 🔴 現在のフェーズ
-
-### Phase 5: 品質向上 `cc:WIP`
-- [x] feature/gps-background を develop にマージ ✅
-- [ ] テストカバレッジ向上
-- [ ] パフォーマンス最適化
-
----
-
-## 🟢 完了済みフェーズ（追加）
-
-### Phase 6: AI 機能強化 `cc:完了`
-- [x] OpenRouter API モデル最適化（Grok 4.1 → GPT 5.1 → Gemini 2.5 → Claude Haiku）
-- [x] 会話履歴の永続化（AsyncStorage、50件上限）
-- [x] キャラクター性格の一貫性向上（システムプロンプト強化）
-- [x] 設定画面に会話履歴クリア機能追加
-- [x] デフォルトレスポンス拡充（14パターン）
-- [x] 292テスト合格（chatStorageテスト10件追加）
-
----
-
-## 🟢 完了済みフェーズ（さらに追加）
-
-### Phase 7: UX改善・モバイル機能強化 `cc:完了`
-
-**詳細仕様**: `docs/ux-improvement-plan.md`
-
-#### 7.1 歩数可視化 `cc:完了`
-- [x] main.tsx に歩数ウィジェット追加
-- [x] useActivityTracking フックの統合
-- [x] 100歩ごとの +1pt アニメーション
-- [x] 次のボーナスまでのプログレスバー
-
-#### 7.2 スポット接近通知 `cc:完了`
-- [x] useNearestSpot に isApproaching, isInCheckInRange 追加
-- [x] 200m 閾値でかおりの発話トリガー
-- [x] **100m** 閾値でチェックインボタン表示（50m→100mに変更）
-- [x] expo-haptics でバイブレーション通知
-
-#### 7.3 かおりと歩数の連動 `cc:完了`
-- [x] getKaoriDialogue に stepsToday パラメータ追加
-- [x] 歩数マイルストーンの特別セリフ（2000/5000/10000歩）
-- [x] 275テスト合格、TypeScript チェック正常
-
-#### 7.4 ゲーミフィケーション強化 `cc:完了`
-- [x] 会話ボーナスシステム（happy/shy時に30%確率で+5〜10pt）
-- [x] 時間ベースボーナス（アクティブ時5分ごと+2pt）
-- [x] 放置ペナルティ（60分以上放置で5分ごと-1pt）
-- [x] ボーナス/ペナルティのアニメーション表示
-- [x] Haptic フィードバック（成功/警告）
+**アチーブメント一覧**:
+| ID | 名前 | 条件 | レアリティ | ボーナス |
+|----|------|------|-----------|---------|
+| first_step | 初めの一歩 | 初チェックイン | Common | +50pt |
+| walker_2k | お散歩日和 | 2,000歩 | Common | +30pt |
+| walker_5k | ウォーカー | 5,000歩 | Rare | +50pt |
+| walker_10k | 健脚 | 10,000歩 | Epic | +100pt |
+| chatterbox | おしゃべり | 会話30回 | Rare | +50pt |
+| explorer | 探検家 | 通常6スポット制覇 | Rare | +200pt |
+| secret_finder | 秘密発見 | シークレット発見 | Rare | +100pt |
+| all_spots | 完全制覇 | 全9スポット制覇 | Epic | +300pt |
+| heart_opener | 心を開いて | 好感度MAX | Epic | +150pt |
+| true_end | TRUE END | TRUE END到達 | Legendary | +500pt |
+| collector | 思い出コレクター | 全13エンディング | Legendary | +1000pt |
+| speed_runner | 時間厳守 | 残り1時間以上 | Common | +50pt |
+| high_scorer | ハイスコアラー | 2,000pt以上 | Epic | +100pt |
 
 ---
 
 ## 🟡 今後のフェーズ
-
-### Phase 8: 追加機能 `cc:TODO`
-- [ ] AR モード検討
-- [ ] SNS シェア機能強化
-- [ ] アチーブメントシステム
 
 ### Phase 9: リリース準備 `cc:TODO`
 - [ ] EAS Build 設定

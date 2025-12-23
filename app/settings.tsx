@@ -4,11 +4,14 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import { useGame } from '../src/contexts/GameContext';
+import { useBGM } from '../src/contexts/BGMContext';
 import { clearChatHistory } from '../src/services/chatStorage';
+import { clearTextLog } from '../src/services/textLogStorage';
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
   const { resetGame } = useGame();
+  const { isMuted, setMuted } = useBGM();
 
   const handleLogout = async () => {
     Alert.alert(
@@ -30,7 +33,7 @@ export default function SettingsScreen() {
   const handleResetGame = () => {
     Alert.alert(
       'ゲームリセット',
-      'ゲームデータをリセットしますか？会話履歴も削除されます。この操作は取り消せません。',
+      'ゲームデータをリセットしますか？会話履歴とテキストログも削除されます。この操作は取り消せません。',
       [
         { text: 'キャンセル', style: 'cancel' },
         {
@@ -38,6 +41,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             await clearChatHistory();
+            await clearTextLog();
             resetGame();
             router.replace('/opening');
           },
@@ -75,6 +79,23 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.content}>
+        {/* Sound Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>サウンド</Text>
+          <View style={styles.menuItem}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name={isMuted ? "volume-mute-outline" : "volume-high-outline"} size={24} color="#333" />
+              <Text style={styles.menuItemText}>BGM</Text>
+            </View>
+            <Switch
+              value={!isMuted}
+              onValueChange={(value) => setMuted(!value)}
+              trackColor={{ false: '#ccc', true: '#ff4757' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
         {/* Account Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>アカウント</Text>

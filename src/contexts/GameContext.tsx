@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { supabase, getCurrentUser, getUserProfile, updateUserScore, createCheckIn } from '../services/supabase';
 import { User, Spot } from '../types';
 import { EndingType, getEndingTypeFromMatrix } from '../constants/endings';
+import { Achievement, AchievementId } from '../constants/achievements';
+import { checkAndUnlockAchievements, UnlockedAchievement } from '../services/achievementStorage';
 
 interface EventScript {
   title: string;
@@ -27,6 +29,7 @@ interface GameContextType {
   checkedInSpots: string[];
   totalSpots: number;
   allClearBonusApplied: boolean;
+  newlyUnlockedAchievements: Achievement[];
 
   setUser: (user: User | null) => void;
   addScore: (points: number) => void;
@@ -39,6 +42,8 @@ interface GameContextType {
   resetGame: () => void;
   getEndingType: () => EndingType;
   checkAllClearBonus: () => void;
+  dismissAchievementNotification: () => void;
+  triggerAchievementCheck: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -61,6 +66,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [checkedInSpots, setCheckedInSpots] = useState<string[]>([]);
   const [allClearBonusApplied, setAllClearBonusApplied] = useState(false);
+  const [newlyUnlockedAchievements, setNewlyUnlockedAchievements] = useState<Achievement[]>([]);
 
   // Countdown timer
   useEffect(() => {
@@ -84,6 +90,46 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
     return false;
   }, [allClearBonusApplied, checkedInSpots.length]);
+
+  // Achievement system functions
+  const dismissAchievementNotification = useCallback(() => {
+    setNewlyUnlockedAchievements([]);
+  }, []);
+
+  const triggerAchievementCheck = useCallback(async () => {
+    const gameState = {
+      checkInCount,
+      checkedInSpots,
+      chatCount,
+      steps: stepsToday,
+      affection,
+      score,
+      timeRemaining,
+    };
+
+    const unlocked = await checkAndUnlockAchievements(gameState);
+
+    if (unlocked.length > 0) {
+      // Get full achievement data for newly unlocked
+      const { ACHIEVEMENTS } = await import('../constants/achievements');
+      const newAchievements = unlocked.map(u => ACHIEVEMENTS[u.id]);
+      setNewlyUnlockedAchievements(prev => [...prev, ...newAchievements]);
+
+      // Add bonus points from achievements
+      const bonusTotal = newAchievements.reduce((sum, a) => sum + a.bonusPoints, 0);
+      if (bonusTotal > 0) {
+        setScore(prev => prev + bonusTotal);
+      }
+    }
+  }, [checkInCount, checkedInSpots, chatCount, stepsToday, affection, score, timeRemaining]);
+
+  // Auto-check achievements when key state changes
+  useEffect(() => {
+    // Only check if game is in progress
+    if (gameStartedAt && (checkInCount > 0 || stepsToday > 0 || chatCount > 0)) {
+      triggerAchievementCheck();
+    }
+  }, [checkInCount, stepsToday, chatCount, affection]);
 
   const addScore = useCallback((points: number) => {
     setScore(prev => {
@@ -301,6 +347,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         checkedInSpots,
         totalSpots: TOTAL_SPOTS,
         allClearBonusApplied,
+        newlyUnlockedAchievements,
         setUser,
         addScore,
         addAffection,
@@ -312,6 +359,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         resetGame,
         getEndingType,
         checkAllClearBonus,
+        dismissAchievementNotification,
+        triggerAchievementCheck,
       }}
     >
       {children}

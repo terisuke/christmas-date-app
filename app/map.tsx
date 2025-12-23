@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import MapView, { Marker, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useGame } from '../src/contexts/GameContext';
-import { SPOT_DATA } from '../src/constants/character';
+import { SPOT_DATA, isSpotAvailableNow, getSpotUnavailableReason } from '../src/constants/character';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -148,6 +148,13 @@ export default function MapScreen() {
       return;
     }
 
+    // Check time restriction for secret spots
+    if (!isSpotAvailableNow(spot.id)) {
+      const reason = getSpotUnavailableReason(spot.id);
+      Alert.alert('時間外です', reason || 'このスポットは現在チェックインできません');
+      return;
+    }
+
     if (spot.distance && spot.distance <= 0.05) { // Within 50m
       // Can check in
       router.push(`/spot/${spot.id}`);
@@ -172,6 +179,8 @@ export default function MapScreen() {
   const getMarkerColor = (spot: SpotWithDistance) => {
     if (isCheckedIn(spot.id)) return '#9e9e9e';
     if (spot.is_secret && !secretSpotsUnlocked) return '#999';
+    // Time-restricted spots show as gray when unavailable
+    if (spot.is_secret && !isSpotAvailableNow(spot.id)) return '#999';
     if (spot.is_secret) return '#ff9800';
     if (spot.distance && spot.distance <= 0.05) return '#4caf50';
     return '#ff4757';
@@ -337,51 +346,65 @@ export default function MapScreen() {
         {/* Secret spots section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            シークレットスポット {!secretSpotsUnlocked && `(${normalSpotCheckIns}/${SECRET_UNLOCK_THRESHOLD}箇所解放)`}
+            シークレットスポット（全3箇所）
           </Text>
 
           {!secretSpotsUnlocked ? (
             <View style={styles.lockedCard}>
               <Ionicons name="lock-closed" size={32} color="#999" />
               <Text style={styles.lockedText}>
-                クリスマスマーケットを{SECRET_UNLOCK_THRESHOLD}箇所以上{'\n'}チェックインすると解放されます
+                通常スポットを{SECRET_UNLOCK_THRESHOLD}箇所以上{'\n'}チェックインすると解放されます
               </Text>
               <Text style={styles.lockedProgress}>
-                現在: {normalSpotCheckIns}/{SECRET_UNLOCK_THRESHOLD}箇所
+                チェックイン: {normalSpotCheckIns}/{SECRET_UNLOCK_THRESHOLD}箇所
               </Text>
             </View>
           ) : (
-            spots.filter(spot => !isCheckedIn(spot.id) && spot.is_secret).map(spot => (
-              <TouchableOpacity
-                key={spot.id}
-                style={[
-                  styles.spotCard,
-                  styles.secretSpotCard,
-                  spot.distance !== undefined && spot.distance <= 0.05 && styles.nearbySpotCard
-                ]}
-                onPress={() => handleSpotPress(spot)}
-              >
-                <View style={styles.spotHeader}>
-                  <Text style={[styles.spotName, styles.secretSpotName]}>
-                    <Ionicons name="star" size={14} color="#ff9800" /> {spot.name}
-                  </Text>
-                  <View style={[styles.pointBadge, styles.secretPointBadge]}>
-                    <Text style={styles.pointText}>{spot.base_point}pt</Text>
+            spots.filter(spot => !isCheckedIn(spot.id) && spot.is_secret).map(spot => {
+              const isAvailable = isSpotAvailableNow(spot.id);
+              const unavailableReason = getSpotUnavailableReason(spot.id);
+
+              return (
+                <TouchableOpacity
+                  key={spot.id}
+                  style={[
+                    styles.spotCard,
+                    styles.secretSpotCard,
+                    spot.distance !== undefined && spot.distance <= 0.05 && isAvailable && styles.nearbySpotCard,
+                    !isAvailable && styles.unavailableCard
+                  ]}
+                  onPress={() => handleSpotPress(spot)}
+                >
+                  <View style={styles.spotHeader}>
+                    <Text style={[styles.spotName, styles.secretSpotName, !isAvailable && styles.unavailableText]}>
+                      <Ionicons name="star" size={14} color={isAvailable ? '#ff9800' : '#999'} /> {spot.name}
+                    </Text>
+                    <View style={[styles.pointBadge, styles.secretPointBadge, !isAvailable && styles.unavailableBadge]}>
+                      <Text style={styles.pointText}>{spot.base_point}pt</Text>
+                    </View>
                   </View>
-                </View>
-                <Text style={styles.spotDescription}>{spot.description}</Text>
-                <View style={styles.spotFooter}>
-                  <Text style={styles.distanceText}>
-                    {formatDistance(spot.distance || 0)}
-                  </Text>
-                  {spot.distance && spot.distance <= 0.05 ? (
-                    <Text style={styles.checkInText}>チェックイン可能</Text>
-                  ) : (
-                    <Text style={styles.tooFarText}>近づく必要があります</Text>
+                  <Text style={styles.spotDescription}>{spot.description}</Text>
+                  {!isAvailable && unavailableReason && (
+                    <View style={styles.timeRestrictionBadge}>
+                      <Ionicons name="time-outline" size={14} color="#ff9800" />
+                      <Text style={styles.timeRestrictionText}>{unavailableReason}</Text>
+                    </View>
                   )}
-                </View>
-              </TouchableOpacity>
-            ))
+                  <View style={styles.spotFooter}>
+                    <Text style={styles.distanceText}>
+                      {formatDistance(spot.distance || 0)}
+                    </Text>
+                    {!isAvailable ? (
+                      <Text style={styles.tooFarText}>時間外</Text>
+                    ) : spot.distance && spot.distance <= 0.05 ? (
+                      <Text style={styles.checkInText}>チェックイン可能</Text>
+                    ) : (
+                      <Text style={styles.tooFarText}>近づく必要があります</Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -575,5 +598,30 @@ const styles = StyleSheet.create({
     color: '#ff9800',
     fontWeight: 'bold',
     marginTop: 10,
+  },
+  unavailableCard: {
+    opacity: 0.6,
+    borderLeftColor: '#999',
+  },
+  unavailableText: {
+    color: '#999',
+  },
+  unavailableBadge: {
+    backgroundColor: '#999',
+  },
+  timeRestrictionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  timeRestrictionText: {
+    fontSize: 12,
+    color: '#ff9800',
+    marginLeft: 4,
   },
 });

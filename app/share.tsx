@@ -1,15 +1,33 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Share, Platform, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Share, Platform, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
 import { useGame } from '../src/contexts/GameContext';
-import { getEndingData } from '../src/constants/endings';
+import { getEndingData, getEndingCategory } from '../src/constants/endings';
 
 export default function ShareScreen() {
   const { score, affection, checkInCount, chatCount, getEndingType, resetGame } = useGame();
+  const cardRef = useRef<View>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const endingType = getEndingType();
   const ending = getEndingData(endingType);
+  const endingCategory = getEndingCategory(endingType);
+
+  // Get category color for card styling
+  const getCategoryColor = () => {
+    switch (endingCategory) {
+      case 'TRUE': return '#ffd700';
+      case 'GOOD': return '#ff4757';
+      case 'NORMAL': return '#5f9ea0';
+      case 'BAD': return '#696969';
+      default: return '#ff4757';
+    }
+  };
 
   const renderStars = (level: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -30,7 +48,7 @@ export default function ShareScreen() {
       ? kaoriDialogues[kaoriDialogues.length - 1].text
       : ending.finalMessage;
 
-    return `【かおりと福岡クリスマス】
+    return `【雪の降らない聖夜に】
 
 ${ending.title}: ${ending.subtitle}
 「${lastKaoriLine}」
@@ -39,7 +57,7 @@ ${ending.title}: ${ending.subtitle}
 好感度: ${stars}
 チェックイン: ${checkInCount}回
 
-#かおりと福岡クリスマス #福岡 #クリスマスデート`;
+#雪の降らない聖夜に #福岡 #クリスマスデート`;
   };
 
   const shareToTwitter = async () => {
@@ -63,7 +81,7 @@ ${ending.title}: ${ending.subtitle}
     try {
       const result = await Share.share({
         message: getShareText(),
-        title: 'かおりと福岡クリスマス - 結果',
+        title: '雪の降らない聖夜に - 結果',
       });
 
       if (result.action === Share.sharedAction) {
@@ -94,6 +112,62 @@ ${ending.title}: ${ending.subtitle}
     }
   };
 
+  // Capture card as image and share
+  const shareWithImage = async () => {
+    if (!cardRef.current || isCapturing) return;
+
+    setIsCapturing(true);
+    try {
+      const uri = await captureRef(cardRef, {
+        format: 'png',
+        quality: 1,
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: '雪の降らない聖夜に - 結果をシェア',
+        });
+      } else {
+        Alert.alert('エラー', 'このデバイスでは画像シェアができません');
+      }
+    } catch (error) {
+      console.error('Share with image error:', error);
+      Alert.alert('シェアエラー', '画像の作成に失敗しました');
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
+  // Save card as image to device
+  const saveToDevice = async () => {
+    if (!cardRef.current || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      // Request permission
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('権限エラー', '写真ライブラリへのアクセス権限が必要です');
+        setIsSaving(false);
+        return;
+      }
+
+      const uri = await captureRef(cardRef, {
+        format: 'png',
+        quality: 1,
+      });
+
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('保存完了', '画像を写真ライブラリに保存しました');
+    } catch (error) {
+      console.error('Save to device error:', error);
+      Alert.alert('保存エラー', '画像の保存に失敗しました');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const goHome = () => {
     resetGame();
     router.replace('/');
@@ -106,9 +180,16 @@ ${ending.title}: ${ending.subtitle}
       </View>
 
       <View style={styles.content}>
-        {/* Share Card */}
-        <View style={styles.shareCard}>
-          <Text style={styles.appTitle}>かおりと福岡クリスマス</Text>
+        {/* Share Card - Capturable */}
+        <View
+          ref={cardRef}
+          style={[styles.shareCard, { borderTopColor: getCategoryColor(), borderTopWidth: 4 }]}
+          collapsable={false}
+        >
+          <Text style={styles.appTitle}>雪の降らない聖夜に</Text>
+          <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor() }]}>
+            <Text style={styles.categoryText}>{endingCategory} END</Text>
+          </View>
           <Text style={styles.endingTitle}>{ending.title}</Text>
           <Text style={styles.endingSubtitle}>{ending.subtitle}</Text>
           <Text style={styles.kaoriMessage}>「{ending.finalMessage}」</Text>
@@ -116,7 +197,7 @@ ${ending.title}: ${ending.subtitle}
           <View style={styles.resultsContainer}>
             <View style={styles.resultRow}>
               <Text style={styles.resultLabel}>最終スコア</Text>
-              <Text style={styles.resultValue}>{score}pt</Text>
+              <Text style={[styles.resultValue, { color: getCategoryColor() }]}>{score}pt</Text>
             </View>
 
             <View style={styles.resultRow}>
@@ -136,10 +217,38 @@ ${ending.title}: ${ending.subtitle}
               <Text style={styles.resultValue}>{chatCount}回</Text>
             </View>
           </View>
+
+          <Text style={styles.hashtag}>#雪の降らない聖夜に</Text>
         </View>
 
-        {/* Share Buttons */}
+        {/* Share Buttons - Row 1: Image actions */}
         <View style={styles.shareButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.shareButton, styles.imageShareButton]}
+            onPress={shareWithImage}
+            disabled={isCapturing}
+          >
+            {isCapturing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Ionicons name="image" size={24} color="#fff" />
+            )}
+            <Text style={styles.shareButtonText}>画像シェア</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.shareButton, styles.saveButton]}
+            onPress={saveToDevice}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Ionicons name="download" size={24} color="#fff" />
+            )}
+            <Text style={styles.shareButtonText}>保存</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.shareButton, styles.twitterButton]}
             onPress={shareToTwitter}
@@ -147,13 +256,16 @@ ${ending.title}: ${ending.subtitle}
             <Ionicons name="logo-twitter" size={24} color="#fff" />
             <Text style={styles.shareButtonText}>Twitter</Text>
           </TouchableOpacity>
+        </View>
 
+        {/* Share Buttons - Row 2: Text actions */}
+        <View style={styles.shareButtonsContainer}>
           <TouchableOpacity
             style={[styles.shareButton, styles.generalButton]}
             onPress={shareGeneral}
           >
             <Ionicons name="share-social" size={24} color="#fff" />
-            <Text style={styles.shareButtonText}>シェア</Text>
+            <Text style={styles.shareButtonText}>テキスト</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -272,6 +384,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
+  imageShareButton: {
+    backgroundColor: '#9c27b0',
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+  },
   twitterButton: {
     backgroundColor: '#1da1f2',
   },
@@ -280,6 +398,22 @@ const styles = StyleSheet.create({
   },
   copyButton: {
     backgroundColor: '#6c757d',
+  },
+  categoryBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  categoryText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  hashtag: {
+    marginTop: 15,
+    fontSize: 12,
+    color: '#999',
   },
   shareButtonText: {
     color: '#fff',

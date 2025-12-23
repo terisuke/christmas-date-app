@@ -2,6 +2,8 @@ import {
   getEndingTypeFromMatrix,
   getEndingData,
   getEndingCategory,
+  getAllEndings,
+  isEndingUnlocked,
   EndingType,
   ENDINGS,
 } from '../../src/constants/endings';
@@ -179,6 +181,74 @@ describe('Ending System', () => {
     it('should have bgColor for all endings', () => {
       Object.values(ENDINGS).forEach(ending => {
         expect(ending.bgColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+      });
+    });
+  });
+
+  describe('getAllEndings', () => {
+    it('should return all 13 endings as an array', () => {
+      const endings = getAllEndings();
+      expect(Array.isArray(endings)).toBe(true);
+      expect(endings.length).toBe(13);
+    });
+
+    it('should return endings with required properties', () => {
+      const endings = getAllEndings();
+      endings.forEach(ending => {
+        expect(ending).toHaveProperty('id');
+        expect(ending).toHaveProperty('title');
+        expect(ending).toHaveProperty('subtitle');
+        expect(ending).toHaveProperty('dialogues');
+        expect(ending).toHaveProperty('bgColor');
+      });
+    });
+
+    it('should include all ending categories', () => {
+      const endings = getAllEndings();
+      const categories = endings.map(e => getEndingCategory(e.id as EndingType));
+
+      expect(categories).toContain('BAD');
+      expect(categories).toContain('NORMAL');
+      expect(categories).toContain('GOOD');
+      expect(categories).toContain('TRUE');
+    });
+  });
+
+  describe('isEndingUnlocked', () => {
+    it('should return true when ending is in unlocked list', () => {
+      const unlockedEndings: EndingType[] = ['BAD_A', 'NORMAL_A', 'TRUE'];
+
+      expect(isEndingUnlocked('BAD_A', unlockedEndings)).toBe(true);
+      expect(isEndingUnlocked('NORMAL_A', unlockedEndings)).toBe(true);
+      expect(isEndingUnlocked('TRUE', unlockedEndings)).toBe(true);
+    });
+
+    it('should return false when ending is not in unlocked list', () => {
+      const unlockedEndings: EndingType[] = ['BAD_A', 'NORMAL_A'];
+
+      expect(isEndingUnlocked('TRUE', unlockedEndings)).toBe(false);
+      expect(isEndingUnlocked('GOOD_A', unlockedEndings)).toBe(false);
+      expect(isEndingUnlocked('BAD_B', unlockedEndings)).toBe(false);
+    });
+
+    it('should return false for empty unlocked list', () => {
+      const unlockedEndings: EndingType[] = [];
+
+      expect(isEndingUnlocked('TRUE', unlockedEndings)).toBe(false);
+      expect(isEndingUnlocked('BAD_A', unlockedEndings)).toBe(false);
+    });
+
+    it('should handle all ending types', () => {
+      const allEndingTypes: EndingType[] = [
+        'BAD_A', 'BAD_B',
+        'NORMAL_A', 'NORMAL_B', 'NORMAL_C', 'NORMAL_D', 'NORMAL_E',
+        'GOOD_A', 'GOOD_B', 'GOOD_C', 'GOOD_D', 'GOOD_E',
+        'TRUE'
+      ];
+
+      // All should be unlocked when all are in list
+      allEndingTypes.forEach(type => {
+        expect(isEndingUnlocked(type, allEndingTypes)).toBe(true);
       });
     });
   });

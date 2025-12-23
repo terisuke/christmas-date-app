@@ -7,11 +7,13 @@ import { getEndingData, getEndingCategory, EndingCategory } from '../src/constan
 import EndingScene from '../src/components/EndingScene';
 import CharacterDisplay from '../src/components/CharacterDisplay';
 import { saveUnlockedEnding } from '../src/services/endingStorage';
+import { useBGM, BGMTrack } from '../src/contexts/BGMContext';
 
 type ScreenState = 'scene' | 'results';
 
 export default function EndingScreen() {
   const { score, affection, checkInCount, chatCount, user, getEndingType, resetGame } = useGame();
+  const { fadeToTrack } = useBGM();
 
   const [screenState, setScreenState] = useState<ScreenState>('scene');
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -25,6 +27,22 @@ export default function EndingScreen() {
   useEffect(() => {
     saveUnlockedEnding(endingType, score, affection);
   }, [endingType, score, affection]);
+
+  // Play ending BGM based on category
+  useEffect(() => {
+    let endingBGM: BGMTrack;
+    switch (endingCategory) {
+      case 'BAD':
+        endingBGM = 'ending_bad';
+        break;
+      case 'TRUE':
+        endingBGM = 'ending_true';
+        break;
+      default:
+        endingBGM = 'ending_good';
+    }
+    fadeToTrack(endingBGM);
+  }, [endingCategory, fadeToTrack]);
 
   // Animate results screen on mount
   useEffect(() => {
@@ -248,8 +266,10 @@ const styles = StyleSheet.create({
   },
   characterSection: {
     alignItems: 'center',
+    justifyContent: 'flex-start',
     marginBottom: 20,
-    height: 120,
+    height: 200,
+    overflow: 'hidden',
   },
   resultsContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',

@@ -115,8 +115,8 @@ export async function sendChatMessage(
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://christmas-date-app.local',
-          'X-Title': 'Christmas Date App',
+          'HTTP-Referer': 'https://yukifura-seiya.local',
+          'X-Title': '雪の降らない聖夜に',
         },
         body: JSON.stringify({
           model,

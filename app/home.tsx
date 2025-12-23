@@ -116,7 +116,7 @@ export default function HomeScreen() {
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>かおりと福岡クリスマス</Text>
+        <Text style={styles.headerTitle}>雪の降らない聖夜に</Text>
       </View>
 
       {/* Status Bar */}

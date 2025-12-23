@@ -1,0 +1,7 @@
+{
+  "timestamp": "2025-12-23T21:00:33Z",
+  "changed_file": "app/spot/[id].tsx",
+  "test_command": "npm test",
+  "related_test": "",
+  "recommendation": "テストの実行を推奨します"
+}

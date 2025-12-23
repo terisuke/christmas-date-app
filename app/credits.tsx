@@ -4,14 +4,27 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function CreditsScreen() {
+  const handleOpenURL = (url: string) => {
+    Linking.openURL(url);
+  };
+
   const credits = [
     {
       category: '企画・開発',
-      items: ['Christmas Date App Team'],
+      items: ['雪の降らない聖夜に 開発チーム'],
     },
     {
       category: 'キャラクターデザイン',
       items: ['雪村かおり - オリジナルキャラクター'],
+    },
+    {
+      category: 'BGM',
+      items: ['甘茶の音楽工房 (Music Atelier Amacha)'],
+      url: 'https://amachamusic.chagasi.com/',
+    },
+    {
+      category: '背景画像',
+      items: ['写真提供：福岡市'],
     },
     {
       category: 'AI技術',
@@ -28,10 +41,6 @@ export default function CreditsScreen() {
     {
       category: 'バックエンド',
       items: ['Supabase'],
-    },
-    {
-      category: '背景画像',
-      items: ['Unsplash'],
     },
     {
       category: 'アイコン',
@@ -52,8 +61,8 @@ export default function CreditsScreen() {
       <ScrollView style={styles.content}>
         {/* Title */}
         <View style={styles.titleSection}>
-          <Text style={styles.appTitle}>かおりと福岡クリスマス</Text>
-          <Text style={styles.appSubtitle}>Christmas Date in Fukuoka</Text>
+          <Text style={styles.appTitle}>雪の降らない聖夜に</Text>
+          <Text style={styles.appSubtitle}>A Christmas Eve Without Snow</Text>
         </View>
 
         {/* Credits List */}
@@ -63,12 +72,17 @@ export default function CreditsScreen() {
             {section.items.map((item, itemIndex) => (
               <Text key={itemIndex} style={styles.creditItem}>{item}</Text>
             ))}
+            {section.url && (
+              <TouchableOpacity onPress={() => handleOpenURL(section.url!)}>
+                <Text style={styles.creditLink}>{section.url}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.copyright}>2024 Christmas Date App</Text>
+          <Text style={styles.copyright}>2024 雪の降らない聖夜に</Text>
           <Text style={styles.thanks}>Thank you for playing!</Text>
         </View>
       </ScrollView>
@@ -134,6 +148,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 5,
     paddingLeft: 10,
+  },
+  creditLink: {
+    fontSize: 12,
+    color: '#4a90d9',
+    paddingLeft: 10,
+    marginTop: 2,
+    textDecorationLine: 'underline',
   },
   footer: {
     alignItems: 'center',

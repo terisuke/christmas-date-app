@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay from '../src/components/CharacterDisplay';
+import { logDialogue, logNarration } from '../src/services/textLogStorage';
 
 export default function OpeningScreen() {
   const { replay } = useLocalSearchParams<{ replay?: string }>();
@@ -39,7 +40,7 @@ export default function OpeningScreen() {
     // Scene 2: Kaori appears
     {
       speaker: '',
-      text: 'ふと、ホテルのロビーの隅に\n白いマフラーを巻いた少女が見えた。',
+      text: 'ふと、ホテルのロビーの隅に\n黄色いニット帽をかぶった少女が見えた。',
       expression: 'neutral' as const,
     },
     {
@@ -139,6 +140,21 @@ export default function OpeningScreen() {
       }
     }
   };
+
+  // Log story text to text log
+  const lastLoggedStep = useRef(-1);
+  useEffect(() => {
+    if (showStory && storyStep !== lastLoggedStep.current) {
+      lastLoggedStep.current = storyStep;
+      const currentStory = storyTexts[storyStep];
+
+      if (currentStory.speaker) {
+        logDialogue(currentStory.speaker, currentStory.text, currentStory.expression, 'opening');
+      } else {
+        logNarration(currentStory.text, 'opening');
+      }
+    }
+  }, [showStory, storyStep]);
 
   const nextStory = () => {
     if (storyStep < storyTexts.length - 1) {
@@ -278,9 +294,10 @@ const styles = StyleSheet.create({
   },
   characterArea: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 80,
+    overflow: 'hidden',
   },
   textArea: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',

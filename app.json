@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "かおりと福岡クリスマス",
-    "slug": "christmas-date-app",
+    "name": "雪の降らない聖夜に",
+    "slug": "yukifura-seiya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,20 +16,20 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "jp.cor-inc.christmas-date-app"
+      "bundleIdentifier": "jp.cor-inc.yukifura-seiya"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ff4757"
       },
-      "package": "jp.corinc.christmasdateapp"
+      "package": "jp.corinc.yukifuraseiya"
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "scheme": "christmas-date-app",
+    "scheme": "yukifura-seiya",
     "plugins": [
       "expo-router",
       [
