@@ -112,7 +112,7 @@ export default function MapScreen() {
 
     spotsWithDistance.sort((a, b) => a.distance! - b.distance!);
     setSpots(spotsWithDistance);
-    setNearbySpots(spotsWithDistance.filter(spot => spot.distance! <= 0.05)); // Within 50m
+    setNearbySpots(spotsWithDistance.filter(spot => spot.distance! <= 0.1)); // Within 100m
   };
 
   const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -155,13 +155,13 @@ export default function MapScreen() {
       return;
     }
 
-    if (spot.distance && spot.distance <= 0.05) { // Within 50m
+    if (spot.distance && spot.distance <= 0.1) { // Within 100m
       // Can check in
       router.push(`/spot/${spot.id}`);
     } else {
       Alert.alert(
         'スポットが遠すぎます',
-        `${spot.name}まで${formatDistance(spot.distance || 0)}です。50m以内に近づいてください。`,
+        `${spot.name}まで${formatDistance(spot.distance || 0)}です。100m以内に近づいてください。`,
         [{ text: 'OK' }]
       );
     }
@@ -283,7 +283,7 @@ export default function MapScreen() {
         {/* Nearby spots (checkable) - only show normal spots OR secret spots if unlocked */}
         {nearbySpots.filter(spot => !isCheckedIn(spot.id) && (!spot.is_secret || secretSpotsUnlocked)).length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>チェックイン可能 (50m以内)</Text>
+            <Text style={styles.sectionTitle}>チェックイン可能 (100m以内)</Text>
             {nearbySpots.filter(spot => !isCheckedIn(spot.id) && (!spot.is_secret || secretSpotsUnlocked)).map(spot => (
               <TouchableOpacity
                 key={spot.id}

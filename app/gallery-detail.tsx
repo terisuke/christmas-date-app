@@ -123,7 +123,8 @@ export default function GalleryDetailScreen() {
             <View style={styles.expressionBadge}>
               <CharacterDisplay
                 expression={dialogue.expression}
-                style={styles.miniCharacter}
+                avatarMode
+                avatarSize={28}
               />
             </View>
             <Text style={styles.speakerName}>{dialogue.speaker}</Text>
@@ -308,15 +309,10 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#fff0f1',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
     overflow: 'hidden',
-  },
-  miniCharacter: {
-    width: 28,
-    height: 28,
   },
   speakerName: {
     fontSize: 14,

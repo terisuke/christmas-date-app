@@ -26,9 +26,9 @@ interface UseNearestSpotResult {
   locationEnabled: boolean;
   // Approach notifications
   isApproaching: boolean;      // Within 200m of a spot
-  isInCheckInRange: boolean;   // Within 50m (can check in)
+  isInCheckInRange: boolean;   // Within 100m (can check in)
   justEnteredApproachZone: boolean; // Just crossed 200m threshold
-  justEnteredCheckInZone: boolean;  // Just crossed 50m threshold
+  justEnteredCheckInZone: boolean;  // Just crossed 100m threshold
   clearApproachFlag: () => void;    // Clear "just entered approach zone" flag
   clearCheckInFlag: () => void;     // Clear "just entered check-in zone" flag
 }

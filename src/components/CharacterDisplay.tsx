@@ -15,6 +15,10 @@ export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' 
 interface CharacterDisplayProps {
   expression?: KaoriExpression;
   style?: object;
+  /** Avatar mode: Shows only the face portion for small icons */
+  avatarMode?: boolean;
+  /** Avatar size in pixels (default: 32) */
+  avatarSize?: number;
 }
 
 // Static require - Metro bundler requires compile-time constants
@@ -40,6 +44,8 @@ const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
 export default function CharacterDisplay({
   expression = 'neutral',
   style,
+  avatarMode = false,
+  avatarSize = 32,
 }: CharacterDisplayProps) {
   const [imageError, setImageError] = useState(false);
 
@@ -49,6 +55,42 @@ export default function CharacterDisplay({
   }, [expression]);
 
   const sprite = CHARACTER_SPRITES[expression];
+
+  // Avatar mode: Show only the face portion
+  if (avatarMode) {
+    // Calculate scaled image size to show face
+    // Face is roughly in top 15-20% of the full sprite
+    // Scale image so face fills the avatar circle
+    const imageWidth = avatarSize * 3;
+    const imageHeight = imageWidth / CHARACTER_ASPECT_RATIO;
+
+    if (imageError || !sprite) {
+      // Simple emoji fallback for avatar
+      return (
+        <View style={[styles.avatarContainer, { width: avatarSize, height: avatarSize }, style]}>
+          <Text style={[styles.avatarEmoji, { fontSize: avatarSize * 0.6 }]}>
+            {EXPRESSION_EMOJI[expression]}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.avatarContainer, { width: avatarSize, height: avatarSize }, style]}>
+        <Image
+          source={sprite}
+          style={{
+            width: imageWidth,
+            height: imageHeight,
+            // Position to show face (top portion of sprite)
+            marginTop: avatarSize * 0.2,
+          }}
+          resizeMode="contain"
+          onError={() => setImageError(true)}
+        />
+      </View>
+    );
+  }
 
   // Fallback to emoji if image fails to load
   if (imageError || !sprite) {
@@ -87,6 +129,16 @@ const styles = StyleSheet.create({
   characterImage: {
     width: CHARACTER_WIDTH,
     height: CHARACTER_HEIGHT,
+  },
+  avatarContainer: {
+    borderRadius: 100,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    backgroundColor: '#fff0f1',
+  },
+  avatarEmoji: {
+    textAlign: 'center',
   },
   emojiContainer: {
     alignItems: 'center',

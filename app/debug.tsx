@@ -63,6 +63,8 @@ export default function DebugScreen() {
     addScore,
     addAffection,
     resetGame,
+    adjustTimeRemaining,
+    forceEnding,
   } = useGame();
 
   const { playBGM, stopBGM, currentTrack, isMuted } = useBGM();
@@ -236,6 +238,82 @@ export default function DebugScreen() {
             >
               <Ionicons name="refresh" size={16} color="#fff" />
               <Text style={styles.dangerButtonText}>ゲームリセット</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Time Manipulation */}
+        <SectionHeader title="時間操作" section="time" icon="time" />
+        {expandedSection === 'time' && (
+          <View style={styles.sectionContent}>
+            <Text style={styles.hintText}>
+              ※残り時間を操作してエンディング発火をテストできます
+            </Text>
+            <Text style={styles.subsectionTitle}>時間を進める（残りを減らす）</Text>
+            <View style={styles.buttonGrid}>
+              <TouchableOpacity
+                style={styles.timeButton}
+                onPress={() => adjustTimeRemaining(-30 * 60 * 1000)}
+              >
+                <Text style={styles.timeButtonText}>-30分</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.timeButton}
+                onPress={() => adjustTimeRemaining(-60 * 60 * 1000)}
+              >
+                <Text style={styles.timeButtonText}>-1時間</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.timeButton}
+                onPress={() => adjustTimeRemaining(-3 * 60 * 60 * 1000)}
+              >
+                <Text style={styles.timeButtonText}>-3時間</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.subsectionTitle}>時間を戻す（残りを増やす）</Text>
+            <View style={styles.buttonGrid}>
+              <TouchableOpacity
+                style={styles.timeButtonAlt}
+                onPress={() => adjustTimeRemaining(30 * 60 * 1000)}
+              >
+                <Text style={styles.timeButtonText}>+30分</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.timeButtonAlt}
+                onPress={() => adjustTimeRemaining(60 * 60 * 1000)}
+              >
+                <Text style={styles.timeButtonText}>+1時間</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.timeButtonAlt}
+                onPress={() => adjustTimeRemaining(3 * 60 * 60 * 1000)}
+              >
+                <Text style={styles.timeButtonText}>+3時間</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.subsectionTitle}>即座にエンディング</Text>
+            <TouchableOpacity
+              style={styles.dangerButton}
+              onPress={() => {
+                Alert.alert(
+                  'エンディング発火',
+                  '現在のスコア・好感度でエンディングを発火しますか？\n\n※残り時間が0になり、エンディング画面に遷移します',
+                  [
+                    { text: 'キャンセル', style: 'cancel' },
+                    {
+                      text: 'エンディングへ',
+                      style: 'destructive',
+                      onPress: () => {
+                        forceEnding();
+                        router.push('/ending');
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="flag" size={16} color="#fff" />
+              <Text style={styles.dangerButtonText}>強制エンディング発火</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -686,6 +764,27 @@ const styles = StyleSheet.create({
   navButtonText: {
     color: '#fff',
     fontSize: 12,
+  },
+  timeButton: {
+    backgroundColor: '#e74c3c',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  timeButtonAlt: {
+    backgroundColor: '#27ae60',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  timeButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   bottomPadding: {
     height: 50,

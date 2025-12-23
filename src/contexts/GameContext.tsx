@@ -44,6 +44,10 @@ interface GameContextType {
   checkAllClearBonus: () => void;
   dismissAchievementNotification: () => void;
   triggerAchievementCheck: () => Promise<void>;
+  /** Debug only: Adjust time remaining */
+  adjustTimeRemaining: (adjustMs: number) => void;
+  /** Debug only: Force trigger ending by setting time to 0 */
+  forceEnding: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -331,6 +335,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return getEndingTypeFromMatrix(score, affection);
   }, [score, affection]);
 
+  // Debug functions for time manipulation
+  const adjustTimeRemaining = useCallback((adjustMs: number) => {
+    setTimeRemaining(prev => Math.max(0, prev + adjustMs));
+    // Also adjust gameStartedAt to keep timer in sync
+    setGameStartedAt(prev => {
+      if (!prev) return prev;
+      return new Date(prev.getTime() - adjustMs);
+    });
+  }, []);
+
+  const forceEnding = useCallback(() => {
+    setTimeRemaining(0);
+    // Set gameStartedAt to far in the past to ensure time is up
+    setGameStartedAt(prev => {
+      if (!prev) return new Date(Date.now() - gameDuration);
+      return new Date(Date.now() - gameDuration);
+    });
+  }, [gameDuration]);
+
   return (
     <GameContext.Provider
       value={{
@@ -361,6 +384,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         checkAllClearBonus,
         dismissAchievementNotification,
         triggerAchievementCheck,
+        adjustTimeRemaining,
+        forceEnding,
       }}
     >
       {children}

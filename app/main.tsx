@@ -408,12 +408,18 @@ export default function MainScreen() {
     }
   }, [affection, timeRemaining, lastActiveMinutes, currentExpression, lastExpressionChange]);
 
-  // Auto-reset expression to neutral after 30 seconds (unless sad/priority state)
+  // Auto-reset expression to neutral after 30 seconds (only for temporary expressions)
+  // This should NOT reset affection-based expressions (happy when affection>=4, shy when affection>=3)
   useEffect(() => {
     // Don't reset if already neutral or in priority state
     if (currentExpression === 'neutral') return;
     if (lastActiveMinutes >= 60) return; // Keep sad expression when idle
     if (timeRemaining < 1000 * 60 * 60) return; // Keep sad when time is running out
+
+    // Don't reset affection-based expressions
+    // These should be maintained as long as the affection level supports them
+    if (affection >= 4 && currentExpression === 'happy') return;
+    if (affection >= 3 && currentExpression === 'shy') return;
 
     const resetTimer = setTimeout(() => {
       const now = Date.now();
@@ -426,7 +432,7 @@ export default function MainScreen() {
     }, 30000);
 
     return () => clearTimeout(resetTimer);
-  }, [currentExpression, lastExpressionChange, lastActiveMinutes, timeRemaining]);
+  }, [currentExpression, lastExpressionChange, lastActiveMinutes, timeRemaining, affection]);
 
   // Update last active time on interaction
   useEffect(() => {
