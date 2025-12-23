@@ -11,10 +11,26 @@ export default function Index() {
   const { gameStartedAt, user } = useGame();
   const { playBGM } = useBGM();
   const [showSplash, setShowSplash] = useState(true);
+  const [readyToNavigate, setReadyToNavigate] = useState(false);
 
   // Navigate to debug screen (only available in __DEV__ mode)
   const goToDebug = () => {
     router.push('/debug' as any);
+  };
+
+  // Manual navigation for dev mode
+  const handleStart = () => {
+    if (isLoaded) {
+      if (isSignedIn) {
+        if (gameStartedAt && user) {
+          router.replace('/main');
+        } else {
+          router.replace('/opening');
+        }
+      } else {
+        router.replace('/sign-in' as const);
+      }
+    }
   };
 
   // Play title BGM on mount
@@ -25,13 +41,17 @@ export default function Index() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
+      // In production, auto-navigate. In dev mode, wait for manual start.
+      if (!__DEV__) {
+        setReadyToNavigate(true);
+      }
     }, 1500);
 
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (!showSplash && isLoaded) {
+    if (readyToNavigate && !showSplash && isLoaded) {
       if (isSignedIn) {
         // If game already started, go to main screen
         if (gameStartedAt && user) {
@@ -43,7 +63,7 @@ export default function Index() {
         router.replace('/sign-in' as const);
       }
     }
-  }, [showSplash, isLoaded, isSignedIn, gameStartedAt, user]);
+  }, [readyToNavigate, showSplash, isLoaded, isSignedIn, gameStartedAt, user]);
 
   return (
     <View style={styles.container}>
@@ -60,10 +80,19 @@ export default function Index() {
         <Text style={styles.subtitle}>A Christmas Eve Without Snow</Text>
 
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>
-            {!isLoaded ? '読み込み中...' : '準備中...'}
-          </Text>
+          {/* In dev mode after splash, show START button instead of auto-navigate */}
+          {__DEV__ && !showSplash && isLoaded ? (
+            <TouchableOpacity style={styles.startButton} onPress={handleStart}>
+              <Text style={styles.startButtonText}>START</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.loadingText}>
+                {!isLoaded ? '読み込み中...' : '準備中...'}
+              </Text>
+            </>
+          )}
         </View>
 
         <View style={styles.info}>
@@ -104,6 +133,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginLeft: 6,
+  },
+  startButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  startButtonText: {
+    color: '#ff4757',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   title: {
     fontSize: 28,
