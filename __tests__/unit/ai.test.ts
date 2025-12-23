@@ -118,7 +118,13 @@ describe('AI Service', () => {
         status: 429,
       } as Response);
 
-      // Third model succeeds
+      // Third model fails
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      } as Response);
+
+      // Fourth model succeeds
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
@@ -128,7 +134,7 @@ describe('AI Service', () => {
 
       const result = await sendChatMessage('test', [], testApiKey);
 
-      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
       expect(result.message).toBe('...はい');
     });
 
@@ -141,8 +147,8 @@ describe('AI Service', () => {
 
       const result = await sendChatMessage('楽しいね', [], testApiKey);
 
-      // Should fall through to all 3 models then use default
-      expect(mockFetch).toHaveBeenCalledTimes(3);
+      // Should fall through to all 4 models then use default
+      expect(mockFetch).toHaveBeenCalledTimes(4);
       expect(result).toHaveProperty('message');
       expect(result).toHaveProperty('expression');
     });
