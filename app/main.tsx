@@ -132,7 +132,6 @@ export default function MainScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentDialogue, setCurrentDialogue] = useState('');
   const [conversationHistory, setConversationHistory] = useState<StoredChatMessage[]>([]);
-  const [messagesSinceExpressionChange, setMessagesSinceExpressionChange] = useState(0);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
@@ -318,9 +317,9 @@ export default function MainScreen() {
     }
   }, [justEnteredCheckInZone, nearestSpot, clearCheckInFlag]);
 
-  // Minimum time between expression changes (30 seconds)
+  // Minimum time between automatic expression changes (30 seconds)
+  // Note: This only applies to auto-state changes, NOT chat-triggered changes
   const EXPRESSION_COOLDOWN = 30 * 1000;
-  const CHAT_EXPRESSION_INTERVAL = 2; // Change expression every 2-3 messages
 
   // Map GPS timeOfDay (day/night) to CharacterDisplay format (morning/afternoon/night)
   const characterTimeOfDay = useMemo((): 'morning' | 'afternoon' | 'night' => {
@@ -529,17 +528,9 @@ export default function MainScreen() {
       // Save to persistent storage
       await saveChatHistory(updatedHistory);
 
-      // Update expression with rate limiting (every 2-3 messages)
-      const newMessageCount = messagesSinceExpressionChange + 1;
-      const shouldChangeExpression = newMessageCount >= CHAT_EXPRESSION_INTERVAL + Math.floor(Math.random() * 2);
-
-      if (shouldChangeExpression) {
-        setCurrentExpression(response.expression);
-        setLastExpressionChange(Date.now());
-        setMessagesSinceExpressionChange(0);
-      } else {
-        setMessagesSinceExpressionChange(newMessageCount);
-      }
+      // Update expression immediately on every chat message
+      setCurrentExpression(response.expression);
+      setLastExpressionChange(Date.now());
 
       incrementChatCount();
 
@@ -581,7 +572,6 @@ export default function MainScreen() {
   const menuItems = [
     { icon: 'stats-chart', label: 'ステータス', route: '/status' },
     { icon: 'map', label: 'マップ', route: '/map' },
-    { icon: 'chatbubbles', label: 'チャット', route: '/chat' },
     { icon: 'document-text', label: 'ログ', route: null, action: () => setTextLogVisible(true) },
     { icon: 'trophy', label: 'アチーブメント', route: '/achievements' },
     { icon: 'images', label: 'ギャラリー', route: '/gallery' },

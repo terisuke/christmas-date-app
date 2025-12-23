@@ -228,10 +228,13 @@ export default function EventScreen() {
         <Text style={styles.spotName}>{spot.name}</Text>
       </View>
 
-      {/* Character Area */}
-      <View style={styles.characterArea}>
+      {/* Character Layer - Positioned absolutely, anchored above text area (matching main.tsx) */}
+      <View style={styles.characterLayer}>
         <CharacterDisplay expression={currentExpression} />
       </View>
+
+      {/* Spacer to push text area to bottom */}
+      <View style={styles.spacer} />
 
       {/* Text Area */}
       <View style={styles.textArea}>
@@ -402,12 +405,17 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginTop: 5,
   },
-  characterArea: {
-    flex: 1,
-    justifyContent: 'flex-start',
+  // VN Standard Layout - Character as background layer (matching main.tsx)
+  characterLayer: {
+    position: 'absolute',
+    bottom: 220, // Position above the text area (minHeight: 250)
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    paddingTop: 20,
-    overflow: 'hidden',
+    zIndex: 1,
+  },
+  spacer: {
+    flex: 1,
   },
   textArea: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
