@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase, getCurrentUser, getUserProfile, updateUserScore, createCheckIn } from '../services/supabase';
 import { User, Spot } from '../types';
+import { EndingType, getEndingTypeFromMatrix } from '../constants/endings';
 
 interface EventScript {
   title: string;
@@ -36,7 +37,7 @@ interface GameContextType {
   startGame: (nickname: string) => Promise<void>;
   loadGameState: () => Promise<void>;
   resetGame: () => void;
-  getEndingType: () => 'BAD' | 'NORMAL' | 'GOOD' | 'TRUE';
+  getEndingType: () => EndingType;
   checkAllClearBonus: () => void;
 }
 
@@ -278,13 +279,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setAllClearBonusApplied(false);
   }, []);
 
-  const getEndingType = useCallback((): 'BAD' | 'NORMAL' | 'GOOD' | 'TRUE' => {
-    // Score thresholds: BAD<600, NORMAL<1200, GOOD<1800, TRUE>=1800
-    if (score < 600) return 'BAD';
-    if (score < 1200) return 'NORMAL';
-    if (score < 1800) return 'GOOD';
-    return 'TRUE';
-  }, [score]);
+  const getEndingType = useCallback((): EndingType => {
+    // Use affection × score matrix for ending determination
+    // See src/constants/endings.ts for full matrix
+    return getEndingTypeFromMatrix(score, affection);
+  }, [score, affection]);
 
   return (
     <GameContext.Provider

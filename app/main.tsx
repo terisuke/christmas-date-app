@@ -269,6 +269,7 @@ export default function MainScreen() {
     { icon: 'stats-chart', label: 'ステータス', route: '/status' },
     { icon: 'map', label: 'マップ', route: '/map' },
     { icon: 'chatbubbles', label: 'チャット', route: '/chat' },
+    { icon: 'images', label: 'ギャラリー', route: '/gallery' },
     { icon: 'book', label: 'プロローグ', route: '/opening?replay=true' },
     { icon: 'settings', label: '設定', route: '/settings' },
     { icon: 'document-text', label: 'クレジット', route: '/credits' },

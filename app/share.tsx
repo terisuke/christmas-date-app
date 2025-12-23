@@ -3,13 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet, Share, Platform, Alert } from
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/contexts/GameContext';
-import { KAORI_ENDINGS } from '../src/constants/character';
+import { getEndingData } from '../src/constants/endings';
 
 export default function ShareScreen() {
   const { score, affection, checkInCount, chatCount, getEndingType, resetGame } = useGame();
 
   const endingType = getEndingType();
-  const ending = KAORI_ENDINGS[endingType];
+  const ending = getEndingData(endingType);
 
   const renderStars = (level: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -24,11 +24,16 @@ export default function ShareScreen() {
 
   const getShareText = () => {
     const stars = '★'.repeat(affection) + '☆'.repeat(5 - affection);
+    // Get last dialogue from Kaori for the share message
+    const kaoriDialogues = ending.dialogues.filter(d => d.speaker === 'かおり');
+    const lastKaoriLine = kaoriDialogues.length > 0
+      ? kaoriDialogues[kaoriDialogues.length - 1].text
+      : ending.finalMessage;
 
     return `【かおりと福岡クリスマス】
 
-${ending.title}
-「${ending.kaoriMessage}」
+${ending.title}: ${ending.subtitle}
+「${lastKaoriLine}」
 
 スコア: ${score}pt
 好感度: ${stars}
@@ -105,7 +110,8 @@ ${ending.title}
         <View style={styles.shareCard}>
           <Text style={styles.appTitle}>かおりと福岡クリスマス</Text>
           <Text style={styles.endingTitle}>{ending.title}</Text>
-          <Text style={styles.kaoriMessage}>「{ending.kaoriMessage}」</Text>
+          <Text style={styles.endingSubtitle}>{ending.subtitle}</Text>
+          <Text style={styles.kaoriMessage}>「{ending.finalMessage}」</Text>
 
           <View style={styles.resultsContainer}>
             <View style={styles.resultRow}>
@@ -211,6 +217,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#ff4757',
+    marginBottom: 5,
+  },
+  endingSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
     marginBottom: 10,
   },
   kaoriMessage: {
