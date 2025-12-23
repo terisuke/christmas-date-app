@@ -1,8 +1,8 @@
 # Plans.md - タスク管理
 
 **プロジェクト**: かおりと福岡クリスマス
-**現在のブランチ**: `feature/gps-background`
-**最終更新**: 2024-12-24 (Phase 4.4 完了)
+**現在のブランチ**: `develop`
+**最終更新**: 2024-12-24 (Phase 4 マージ完了)
 
 ---
 
@@ -73,14 +73,14 @@
 
 ## 🔴 現在のフェーズ
 
+### Phase 5: 品質向上 `cc:WIP`
+- [x] feature/gps-background を develop にマージ ✅
+- [ ] テストカバレッジ向上
+- [ ] パフォーマンス最適化
+
 ---
 
 ## 🟡 今後のフェーズ
-
-### Phase 5: 品質向上 `cc:TODO`
-- [ ] feature/gps-background を develop にマージ
-- [ ] PR レビュー対応
-- [ ] テストカバレッジ向上
 
 ### Phase 6: AI 機能強化 `cc:TODO`
 - [ ] Claude API 連携（AI 会話）
