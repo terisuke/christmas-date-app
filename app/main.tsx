@@ -19,6 +19,12 @@ import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay from '../src/components/CharacterDisplay';
 import { KaoriExpression } from '../src/components/CharacterDisplay';
 import { sendChatMessage, getOpenRouterApiKey } from '../src/services/ai';
+import {
+  saveChatHistory,
+  loadChatHistory,
+  ChatMessage as StoredChatMessage,
+  getRecentMessagesForAI,
+} from '../src/services/chatStorage';
 import { useNearestSpot } from '../src/hooks/useNearestSpot';
 import { getSpotBackground, getFallbackColor, TimeOfDay } from '../src/constants/backgrounds';
 
@@ -87,13 +93,31 @@ export default function MainScreen() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentDialogue, setCurrentDialogue] = useState('');
-  const [conversationHistory, setConversationHistory] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<StoredChatMessage[]>([]);
   const [messagesSinceExpressionChange, setMessagesSinceExpressionChange] = useState(0);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   // Keyboard state
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Load chat history on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      const history = await loadChatHistory();
+      if (history.length > 0) {
+        setConversationHistory(history);
+        // Restore last message as current dialogue
+        const lastAssistantMsg = history.filter(m => m.role === 'assistant').pop();
+        if (lastAssistantMsg) {
+          setCurrentDialogue(lastAssistantMsg.content);
+        }
+      }
+      setHistoryLoaded(true);
+    };
+    loadHistory();
+  }, []);
 
   // Minimum time between expression changes (30 seconds)
   const EXPRESSION_COOLDOWN = 30 * 1000;
@@ -203,8 +227,13 @@ export default function MainScreen() {
     setInputText('');
     setIsLoading(true);
 
-    // Add to conversation history
-    const newHistory = [...conversationHistory, { role: 'user' as const, content: userMessage }];
+    // Add to conversation history with timestamp
+    const userMsg: StoredChatMessage = {
+      role: 'user',
+      content: userMessage,
+      timestamp: Date.now(),
+    };
+    const newHistory = [...conversationHistory, userMsg];
     setConversationHistory(newHistory);
 
     try {
@@ -212,7 +241,7 @@ export default function MainScreen() {
       const nickname = user?.nickname || 'お兄さん';
       const response = await sendChatMessage(
         userMessage,
-        conversationHistory.slice(-10),
+        getRecentMessagesForAI(conversationHistory, 10),
         apiKey,
         affection,
         nickname
@@ -221,8 +250,17 @@ export default function MainScreen() {
       // Update dialogue
       setCurrentDialogue(response.message);
 
-      // Add response to history
-      setConversationHistory([...newHistory, { role: 'assistant' as const, content: response.message }]);
+      // Add response to history with timestamp
+      const assistantMsg: StoredChatMessage = {
+        role: 'assistant',
+        content: response.message,
+        timestamp: Date.now(),
+      };
+      const updatedHistory = [...newHistory, assistantMsg];
+      setConversationHistory(updatedHistory);
+
+      // Save to persistent storage
+      await saveChatHistory(updatedHistory);
 
       // Update expression with rate limiting (every 2-3 messages)
       const newMessageCount = messagesSinceExpressionChange + 1;

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import { useGame } from '../src/contexts/GameContext';
+import { clearChatHistory } from '../src/services/chatStorage';
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
@@ -29,15 +30,34 @@ export default function SettingsScreen() {
   const handleResetGame = () => {
     Alert.alert(
       'ゲームリセット',
-      'ゲームデータをリセットしますか？この操作は取り消せません。',
+      'ゲームデータをリセットしますか？会話履歴も削除されます。この操作は取り消せません。',
       [
         { text: 'キャンセル', style: 'cancel' },
         {
           text: 'リセット',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await clearChatHistory();
             resetGame();
             router.replace('/opening');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearChatHistory = () => {
+    Alert.alert(
+      '会話履歴をクリア',
+      'かおりとの会話履歴を削除しますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'クリア',
+          style: 'destructive',
+          onPress: async () => {
+            await clearChatHistory();
+            Alert.alert('完了', '会話履歴を削除しました');
           },
         },
       ]
@@ -70,6 +90,13 @@ export default function SettingsScreen() {
         {/* Game Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ゲーム</Text>
+          <TouchableOpacity style={styles.menuItem} onPress={handleClearChatHistory}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="chatbubble-ellipses-outline" size={24} color="#333" />
+              <Text style={styles.menuItemText}>会話履歴をクリア</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={handleResetGame}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="refresh-outline" size={24} color="#ff4757" />
