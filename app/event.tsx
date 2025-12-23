@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, ImageBackground } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/contexts/GameContext';
@@ -7,6 +7,7 @@ import { SPOT_DATA, KAORI_SPOT_REACTIONS } from '../src/constants/character';
 import CharacterDisplay, { KaoriExpression } from '../src/components/CharacterDisplay';
 import { logDialogue, logChoice } from '../src/services/textLogStorage';
 import { useBGM } from '../src/contexts/BGMContext';
+import { getSpotBackground, getCurrentTimeOfDay, FALLBACK_COLORS } from '../src/constants/backgrounds';
 
 interface Choice {
   text: string;
@@ -25,6 +26,11 @@ export default function EventScreen() {
 
   const spot = SPOT_DATA.find(s => s.id === spotId);
   const reaction = KAORI_SPOT_REACTIONS[spotId || ''];
+
+  // Get spot-specific background based on time of day
+  const timeOfDay = getCurrentTimeOfDay();
+  const spotBackground = getSpotBackground(spotId || null, timeOfDay);
+  const fallbackColor = FALLBACK_COLORS[timeOfDay];
 
   // Play event BGM on mount
   useEffect(() => {
@@ -213,9 +219,10 @@ export default function EventScreen() {
     );
   }
 
-  return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      {/* Background with title */}
+  // Render content with or without background image
+  const renderContent = () => (
+    <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+      {/* Title Area */}
       <View style={styles.titleArea}>
         <Text style={styles.eventTitle}>{eventScript.title}</Text>
         <Text style={styles.spotName}>{spot.name}</Text>
@@ -325,12 +332,35 @@ export default function EventScreen() {
       )}
     </Animated.View>
   );
+
+  // Render with ImageBackground if available, otherwise with fallback color
+  if (spotBackground) {
+    return (
+      <ImageBackground
+        source={spotBackground}
+        style={styles.container}
+        resizeMode="cover"
+      >
+        {renderContent()}
+      </ImageBackground>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: fallbackColor }]}>
+      {renderContent()}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   errorContent: {
     flex: 1,

@@ -1,22 +1,27 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Share, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Share, Platform, Alert, ActivityIndicator, Image, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
 import { useGame } from '../src/contexts/GameContext';
 import { getEndingData, getEndingCategory } from '../src/constants/endings';
+import { getEndingCG, EndingCGCategory } from '../src/constants/backgrounds';
 
 export default function ShareScreen() {
   const { score, affection, checkInCount, chatCount, getEndingType, resetGame } = useGame();
   const cardRef = useRef<View>(null);
+  const cgRef = useRef<View>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingCG, setIsSavingCG] = useState(false);
 
   const endingType = getEndingType();
   const ending = getEndingData(endingType);
   const endingCategory = getEndingCategory(endingType);
+  const endingCG = getEndingCG(endingCategory as EndingCGCategory);
 
   // Get category color for card styling
   const getCategoryColor = () => {
@@ -168,6 +173,62 @@ ${ending.title}: ${ending.subtitle}
     }
   };
 
+  // Save CG with results overlay to device
+  const saveCGToDevice = async () => {
+    if (!cgRef.current || isSavingCG) return;
+
+    setIsSavingCG(true);
+    try {
+      // Request permission
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('権限エラー', '写真ライブラリへのアクセス権限が必要です');
+        setIsSavingCG(false);
+        return;
+      }
+
+      const uri = await captureRef(cgRef, {
+        format: 'png',
+        quality: 1,
+      });
+
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('保存完了', 'エンディングCGを保存しました');
+    } catch (error) {
+      console.error('Save CG error:', error);
+      Alert.alert('保存エラー', 'CGの保存に失敗しました');
+    } finally {
+      setIsSavingCG(false);
+    }
+  };
+
+  // Share CG with results overlay
+  const shareCGWithResults = async () => {
+    if (!cgRef.current || isCapturing) return;
+
+    setIsCapturing(true);
+    try {
+      const uri = await captureRef(cgRef, {
+        format: 'png',
+        quality: 1,
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: '雪の降らない聖夜に - エンディングCGをシェア',
+        });
+      } else {
+        Alert.alert('エラー', 'このデバイスでは画像シェアができません');
+      }
+    } catch (error) {
+      console.error('Share CG error:', error);
+      Alert.alert('シェアエラー', 'CGのシェアに失敗しました');
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
   const goHome = () => {
     resetGame();
     router.replace('/');
@@ -179,7 +240,60 @@ ${ending.title}: ${ending.subtitle}
         <Text style={styles.headerTitle}>結果をシェア</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* CG Card with overlay - Capturable for sharing */}
+        {endingCG && (
+          <View
+            ref={cgRef}
+            style={styles.cgCard}
+            collapsable={false}
+          >
+            <Image source={endingCG} style={styles.cgImage} resizeMode="cover" />
+            <View style={styles.cgOverlay}>
+              <View style={[styles.cgBadge, { backgroundColor: getCategoryColor() }]}>
+                <Text style={styles.cgBadgeText}>{endingCategory} END</Text>
+              </View>
+              <Text style={styles.cgTitle}>{ending.title}</Text>
+              <Text style={styles.cgSubtitle}>{ending.subtitle}</Text>
+              <View style={styles.cgStats}>
+                <Text style={styles.cgStatText}>{score}pt | ★{affection} | {checkInCount}回</Text>
+              </View>
+              <Text style={styles.cgHashtag}>#雪の降らない聖夜に</Text>
+            </View>
+          </View>
+        )}
+
+        {/* CG Action Buttons */}
+        {endingCG && (
+          <View style={styles.cgButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.cgButton, styles.cgSaveButton]}
+              onPress={saveCGToDevice}
+              disabled={isSavingCG}
+            >
+              {isSavingCG ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Ionicons name="download" size={20} color="#fff" />
+              )}
+              <Text style={styles.cgButtonText}>CG保存</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.cgButton, styles.cgShareButton]}
+              onPress={shareCGWithResults}
+              disabled={isCapturing}
+            >
+              {isCapturing ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Ionicons name="share-social" size={20} color="#fff" />
+              )}
+              <Text style={styles.cgButtonText}>CGシェア</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Share Card - Capturable */}
         <View
           ref={cardRef}
@@ -250,11 +364,11 @@ ${ending.title}: ${ending.subtitle}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.shareButton, styles.twitterButton]}
+            style={[styles.shareButton, styles.xButton]}
             onPress={shareToTwitter}
           >
-            <Ionicons name="logo-twitter" size={24} color="#fff" />
-            <Text style={styles.shareButtonText}>Twitter</Text>
+            <Text style={styles.xIcon}>𝕏</Text>
+            <Text style={styles.shareButtonText}>Xでポスト</Text>
           </TouchableOpacity>
         </View>
 
@@ -281,7 +395,7 @@ ${ending.title}: ${ending.subtitle}
           <Ionicons name="home" size={20} color="#fff" />
           <Text style={styles.homeButtonText}>タイトルに戻る</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -303,10 +417,96 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 20,
+    paddingBottom: 40,
+  },
+  // CG Card styles
+  cgCard: {
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  cgImage: {
+    width: '100%',
+    height: 300,
+  },
+  cgOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 15,
+    alignItems: 'center',
+  },
+  cgBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 5,
+  },
+  cgBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  cgTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  cgSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontStyle: 'italic',
+    marginBottom: 5,
+  },
+  cgStats: {
+    marginTop: 5,
+  },
+  cgStatText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  cgHashtag: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 5,
+  },
+  cgButtonsContainer: {
+    flexDirection: 'row',
     justifyContent: 'center',
+    gap: 15,
+    marginBottom: 20,
+  },
+  cgButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  cgSaveButton: {
+    backgroundColor: '#ff4757',
+  },
+  cgShareButton: {
+    backgroundColor: '#9c27b0',
+  },
+  cgButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   shareCard: {
     backgroundColor: '#fff',
@@ -390,8 +590,13 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: '#4CAF50',
   },
-  twitterButton: {
-    backgroundColor: '#1da1f2',
+  xButton: {
+    backgroundColor: '#000',
+  },
+  xIcon: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   generalButton: {
     backgroundColor: '#ff4757',

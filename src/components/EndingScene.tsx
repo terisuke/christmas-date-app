@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   titleArea: {
-    paddingTop: 60,
+    paddingTop: 100,
     paddingHorizontal: 20,
     paddingBottom: 10,
     alignItems: 'center',
@@ -463,9 +463,10 @@ const styles = StyleSheet.create({
   },
   characterArea: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingBottom: 20,
+    paddingTop: 20,
+    overflow: 'hidden',
   },
   bottomArea: {
     minHeight: 220,
