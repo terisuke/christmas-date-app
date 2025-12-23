@@ -243,7 +243,7 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
           },
         ]}
       >
-      {/* Title Area */}
+      {/* Title Area - absolute positioned at top */}
       <View style={styles.titleArea}>
         <Animated.Text
           style={[
@@ -263,14 +263,17 @@ export default function EndingScene({ endingData, onComplete, nickname = '' }: E
         </Animated.Text>
       </View>
 
-      {/* Character Area - only show when Kaori is speaking */}
-      <View style={styles.characterArea}>
-        {currentDialogue?.speaker === 'かおり' && isDialoguePhase && (
+      {/* Character Layer - absolute positioned above dialogue */}
+      {currentDialogue?.speaker === 'かおり' && isDialoguePhase && (
+        <View style={styles.characterLayer}>
           <CharacterDisplay expression={currentDialogue.expression} />
-        )}
-      </View>
+        </View>
+      )}
 
-      {/* Text/Result Area */}
+      {/* Spacer to push bottomArea to bottom */}
+      <View style={styles.spacer} />
+
+      {/* Text/Result Area - anchored to bottom */}
       <View style={styles.bottomArea}>
         {isResultPhase ? (
           // Final result screen
@@ -461,22 +464,27 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontStyle: 'italic',
   },
-  characterArea: {
+  spacer: {
     flex: 1,
-    justifyContent: 'flex-start',
+  },
+  characterLayer: {
+    position: 'absolute',
+    bottom: 200,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    paddingTop: 20,
-    overflow: 'hidden',
+    zIndex: 1,
   },
   bottomArea: {
-    minHeight: 220,
+    zIndex: 10,
   },
   textArea: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     padding: 20,
-    minHeight: 200,
+    paddingBottom: 40,
+    minHeight: 180,
   },
   narrationArea: {
     backgroundColor: 'rgba(30, 30, 50, 0.9)',
@@ -516,8 +524,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     padding: 30,
+    paddingBottom: 50,
     alignItems: 'center',
-    minHeight: 200,
+    minHeight: 180,
   },
   finalMessage: {
     fontSize: 18,
