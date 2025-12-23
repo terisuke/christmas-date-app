@@ -5,6 +5,10 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Development mode: Skip authentication and use mock data
+const DEV_USER_ID = 'dev-user-12345';
+const isDevMode = __DEV__;
+
 // Database schema types
 export interface Database {
   public: {
@@ -137,6 +141,12 @@ export const signInAnonymously = async () => {
 
 export const getCurrentUser = async () => {
   const { data: { user } } = await supabase.auth.getUser();
+
+  // In dev mode, return a mock user if not authenticated
+  if (!user && isDevMode) {
+    return { id: DEV_USER_ID } as any;
+  }
+
   return user;
 };
 
@@ -145,47 +155,86 @@ export const createUser = async (nickname: string) => {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
-    .from('users')
-    .insert({
-      id: user.id,
-      nickname,
-      total_score: 0,
-      affection: 1,
-      steps_today: 0,
-      game_completed: false,
-    })
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        id: user.id,
+        nickname,
+        total_score: 0,
+        affection: 1,
+        steps_today: 0,
+        game_completed: false,
+      })
+      .select()
+      .single();
 
-  return { data, error };
+    if (error && isDevMode) {
+      console.log('[DEV] createUser skipped:', error.message);
+      return { data: { id: user.id, nickname, total_score: 0, affection: 1, steps_today: 0, game_completed: false }, error: null };
+    }
+
+    return { data, error };
+  } catch (e) {
+    if (isDevMode) {
+      console.log('[DEV] createUser error skipped:', e);
+      return { data: { id: user.id, nickname, total_score: 0, affection: 1, steps_today: 0, game_completed: false }, error: null };
+    }
+    throw e;
+  }
 };
 
 export const getUserProfile = async () => {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-  return { data, error };
+    if (error && isDevMode) {
+      console.log('[DEV] getUserProfile skipped:', error.message);
+      return { data: null, error: null };
+    }
+
+    return { data, error };
+  } catch (e) {
+    if (isDevMode) {
+      console.log('[DEV] getUserProfile error skipped:', e);
+      return { data: null, error: null };
+    }
+    throw e;
+  }
 };
 
 export const updateUserScore = async (score: number, affection: number) => {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
-    .from('users')
-    .update({ total_score: score, affection })
-    .eq('id', user.id)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ total_score: score, affection })
+      .eq('id', user.id)
+      .select()
+      .single();
 
-  return { data, error };
+    if (error && isDevMode) {
+      console.log('[DEV] updateUserScore skipped:', error.message);
+      return { data: { total_score: score, affection }, error: null };
+    }
+
+    return { data, error };
+  } catch (e) {
+    if (isDevMode) {
+      console.log('[DEV] updateUserScore error skipped:', e);
+      return { data: { total_score: score, affection }, error: null };
+    }
+    throw e;
+  }
 };
 
 // Check-in functions
@@ -193,19 +242,54 @@ export const createCheckIn = async (spotId: string, earnedPoints: number, select
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
-    .from('checkins')
-    .insert({
-      user_id: user.id,
-      spot_id: spotId,
-      earned_points: earnedPoints,
-      selected_choice: selectedChoice,
-      affection_change: affectionChange,
-    })
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('checkins')
+      .insert({
+        user_id: user.id,
+        spot_id: spotId,
+        earned_points: earnedPoints,
+        selected_choice: selectedChoice,
+        affection_change: affectionChange,
+      })
+      .select()
+      .single();
 
-  return { data, error };
+    if (error && isDevMode) {
+      console.log('[DEV] createCheckIn skipped:', error.message);
+      return {
+        data: {
+          id: `dev-checkin-${Date.now()}`,
+          user_id: user.id,
+          spot_id: spotId,
+          earned_points: earnedPoints,
+          selected_choice: selectedChoice,
+          affection_change: affectionChange,
+          checked_at: new Date().toISOString(),
+        },
+        error: null,
+      };
+    }
+
+    return { data, error };
+  } catch (e) {
+    if (isDevMode) {
+      console.log('[DEV] createCheckIn error skipped:', e);
+      return {
+        data: {
+          id: `dev-checkin-${Date.now()}`,
+          user_id: user.id,
+          spot_id: spotId,
+          earned_points: earnedPoints,
+          selected_choice: selectedChoice,
+          affection_change: affectionChange,
+          checked_at: new Date().toISOString(),
+        },
+        error: null,
+      };
+    }
+    throw e;
+  }
 };
 
 // Chat functions
@@ -213,28 +297,72 @@ export const saveChatMessage = async (role: 'user' | 'assistant', content: strin
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
-    .from('chat_logs')
-    .insert({
-      user_id: user.id,
-      role,
-      content,
-    })
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('chat_logs')
+      .insert({
+        user_id: user.id,
+        role,
+        content,
+      })
+      .select()
+      .single();
 
-  return { data, error };
+    if (error && isDevMode) {
+      console.log('[DEV] saveChatMessage skipped:', error.message);
+      return {
+        data: {
+          id: `dev-chat-${Date.now()}`,
+          user_id: user.id,
+          role,
+          content,
+          created_at: new Date().toISOString(),
+        },
+        error: null,
+      };
+    }
+
+    return { data, error };
+  } catch (e) {
+    if (isDevMode) {
+      console.log('[DEV] saveChatMessage error skipped:', e);
+      return {
+        data: {
+          id: `dev-chat-${Date.now()}`,
+          user_id: user.id,
+          role,
+          content,
+          created_at: new Date().toISOString(),
+        },
+        error: null,
+      };
+    }
+    throw e;
+  }
 };
 
 export const getChatHistory = async () => {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
-    .from('chat_logs')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('chat_logs')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
 
-  return { data, error };
+    if (error && isDevMode) {
+      console.log('[DEV] getChatHistory skipped:', error.message);
+      return { data: [], error: null };
+    }
+
+    return { data, error };
+  } catch (e) {
+    if (isDevMode) {
+      console.log('[DEV] getChatHistory error skipped:', e);
+      return { data: [], error: null };
+    }
+    throw e;
+  }
 };
