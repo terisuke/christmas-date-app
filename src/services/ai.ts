@@ -207,6 +207,48 @@ const DEFAULT_RESPONSES: { pattern: RegExp; responses: { message: string; expres
       { message: '...えっ、わたしも？', expression: 'surprised' },
     ],
   },
+  {
+    pattern: /ありがと|サンキュー|thank/i,
+    responses: [
+      { message: '...ううん、こちらこそ', expression: 'shy' },
+      { message: '...えへへ', expression: 'happy' },
+    ],
+  },
+  {
+    pattern: /どう思う|どうかな|意見/,
+    responses: [
+      { message: '...うーん、いいと思う...かな', expression: 'thinking' },
+      { message: '...えっと...', expression: 'thinking' },
+    ],
+  },
+  {
+    pattern: /北海道|小樽|札幌/,
+    responses: [
+      { message: '...うん、北海道...なまら寒いけど、いいとこ', expression: 'happy' },
+      { message: '...小樽、また来て...あっ', expression: 'shy' },
+    ],
+  },
+  {
+    pattern: /クリスマス|イルミ|ツリー/,
+    responses: [
+      { message: '...きれい...', expression: 'happy' },
+      { message: '...わ、光ってる...', expression: 'happy' },
+    ],
+  },
+  {
+    pattern: /帰り|帰る|さよなら|バイバイ/,
+    responses: [
+      { message: '...うん...もう、そんな時間...', expression: 'sad' },
+      { message: '...あ...', expression: 'sad' },
+    ],
+  },
+  {
+    pattern: /何|なに|どこ|いつ/,
+    responses: [
+      { message: '...えっと...', expression: 'thinking' },
+      { message: '...うーん...', expression: 'thinking' },
+    ],
+  },
 ];
 
 function getDefaultResponse(userMessage: string): AIResponse {
