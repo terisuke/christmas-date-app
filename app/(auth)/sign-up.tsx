@@ -53,7 +53,7 @@ export default function SignUpScreen() {
 
       if (createdSessionId && ssoSetActive) {
         await ssoSetActive({ session: createdSessionId });
-        router.replace('/home');
+        router.replace('/opening');
       }
     } catch (err: any) {
       console.error('Google sign up error:', err);
@@ -116,7 +116,7 @@ export default function SignUpScreen() {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.replace('/home');
+        router.replace('/opening');
       } else {
         console.log('Verification incomplete:', result);
         Alert.alert('エラー', '確認に失敗しました。もう一度お試しください。');

@@ -203,7 +203,7 @@ export default function EventScreen() {
   };
 
   const handleContinue = () => {
-    router.replace('/home');
+    router.replace('/main');
   };
 
   if (!spot) {
@@ -211,7 +211,7 @@ export default function EventScreen() {
       <View style={styles.container}>
         <View style={styles.errorContent}>
           <Text style={styles.errorText}>イベントデータが見つかりません</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/main')}>
             <Text style={styles.backButtonText}>ホームに戻る</Text>
           </TouchableOpacity>
         </View>

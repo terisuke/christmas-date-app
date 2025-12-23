@@ -50,7 +50,7 @@ export default function SignInScreen() {
 
       if (createdSessionId && ssoSetActive) {
         await ssoSetActive({ session: createdSessionId });
-        router.replace('/home');
+        router.replace('/opening');
       }
     } catch (err: any) {
       console.error('Google sign in error:', err);
@@ -78,7 +78,7 @@ export default function SignInScreen() {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.replace('/home');
+        router.replace('/opening');
       } else {
         console.log('Sign in incomplete:', result);
         Alert.alert('エラー', 'ログインに失敗しました。もう一度お試しください。');
