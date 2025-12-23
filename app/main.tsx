@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardEvent,
+  ImageBackground,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,15 +19,10 @@ import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay from '../src/components/CharacterDisplay';
 import { KaoriExpression } from '../src/components/CharacterDisplay';
 import { sendChatMessage, getOpenRouterApiKey } from '../src/services/ai';
+import { useNearestSpot } from '../src/hooks/useNearestSpot';
+import { getSpotBackground, getFallbackColor, TimeOfDay } from '../src/constants/backgrounds';
 
 const { width } = Dimensions.get('window');
-
-// Time-based background colors (solid colors for faster loading)
-const TIME_BACKGROUNDS = {
-  morning: '#E8F4FD', // Light blue morning sky
-  afternoon: '#FFF8E7', // Warm afternoon
-  night: '#1a1a2e', // Dark night sky
-};
 
 // Kaori dialogue based on state
 const getKaoriDialogue = (
@@ -78,6 +74,9 @@ export default function MainScreen() {
     incrementChatCount,
   } = useGame();
 
+  // GPS-based location tracking
+  const { nearestSpot, timeOfDay: gpsTimeOfDay, locationEnabled } = useNearestSpot();
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentExpression, setCurrentExpression] = useState<KaoriExpression>('neutral');
   const [lastActiveTime, setLastActiveTime] = useState(Date.now());
@@ -100,15 +99,19 @@ export default function MainScreen() {
   const EXPRESSION_COOLDOWN = 30 * 1000;
   const CHAT_EXPRESSION_INTERVAL = 2; // Change expression every 2-3 messages
 
-  // Get time of day
-  const getTimeOfDay = (): 'morning' | 'afternoon' | 'night' => {
+  // Map GPS timeOfDay (day/night) to CharacterDisplay format (morning/afternoon/night)
+  const getCharacterTimeOfDay = (): 'morning' | 'afternoon' | 'night' => {
     const hour = new Date().getHours();
     if (hour >= 6 && hour < 12) return 'morning';
     if (hour >= 12 && hour < 18) return 'afternoon';
     return 'night';
   };
 
-  const timeOfDay = getTimeOfDay();
+  const characterTimeOfDay = getCharacterTimeOfDay();
+
+  // Get background based on nearest spot and time of day
+  const backgroundImage = getSpotBackground(nearestSpot?.id || null, gpsTimeOfDay);
+  const fallbackColor = getFallbackColor(gpsTimeOfDay);
 
   // Calculate idle time
   const lastActiveMinutes = Math.floor((Date.now() - lastActiveTime) / (1000 * 60));
@@ -152,6 +155,13 @@ export default function MainScreen() {
   useEffect(() => {
     setLastActiveTime(Date.now());
   }, [score, checkInCount, chatCount]);
+
+  // Clear chat dialogue when idle for 60+ minutes to show idle-specific dialogue
+  useEffect(() => {
+    if (lastActiveMinutes >= 60 && currentDialogue) {
+      setCurrentDialogue('');
+    }
+  }, [lastActiveMinutes, currentDialogue]);
 
   // Keyboard listener
   useEffect(() => {
@@ -259,129 +269,151 @@ export default function MainScreen() {
     { icon: 'stats-chart', label: 'ステータス', route: '/status' },
     { icon: 'map', label: 'マップ', route: '/map' },
     { icon: 'chatbubbles', label: 'チャット', route: '/chat' },
+    { icon: 'images', label: 'ギャラリー', route: '/gallery' },
     { icon: 'book', label: 'プロローグ', route: '/opening?replay=true' },
     { icon: 'settings', label: '設定', route: '/settings' },
     { icon: 'document-text', label: 'クレジット', route: '/credits' },
   ];
 
-  return (
-    <View style={styles.container}>
-      <View style={[styles.background, { backgroundColor: TIME_BACKGROUNDS[timeOfDay] }]}>
-        {/* Overlay */}
-        <View style={styles.overlay}>
-          {/* Status Bar with Menu Button */}
-          <View style={styles.statusBar}>
-            <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
-              <Ionicons name={menuOpen ? 'close' : 'menu'} size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.currentTime}>{currentTime}</Text>
-            <Text style={styles.countdown}>
-              かおりが帰るまで {formatTimeRemaining(timeRemaining)}
-            </Text>
-          </View>
+  // Render content inside background
+  const renderContent = () => (
+    <View style={[styles.overlay, gpsTimeOfDay === 'night' && styles.nightOverlay]}>
+      {/* Status Bar with Menu Button */}
+      <View style={styles.statusBar}>
+        <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
+          <Ionicons name={menuOpen ? 'close' : 'menu'} size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.currentTime}>{currentTime}</Text>
+        <Text style={styles.countdown}>
+          かおりが帰るまで {formatTimeRemaining(timeRemaining)}
+        </Text>
+      </View>
 
-          {/* Score Badge */}
-          <View style={styles.scoreBadge}>
-            <Text style={styles.scoreText}>{score}pt</Text>
-            <View style={styles.starsRow}>
-              {Array.from({ length: 5 }, (_, i) => (
-                <Ionicons
-                  key={i}
-                  name={i < affection ? 'heart' : 'heart-outline'}
-                  size={14}
-                  color={i < affection ? '#ff4757' : '#ccc'}
-                />
-              ))}
-            </View>
-          </View>
+      {/* Location Badge */}
+      {nearestSpot && (
+        <View style={styles.locationBadge}>
+          <Ionicons name="location" size={14} color="#fff" />
+          <Text style={styles.locationText}>{nearestSpot.name}</Text>
+          <Text style={styles.distanceText}>{nearestSpot.distance}m</Text>
+        </View>
+      )}
 
-          {/* Character Display Area - Faded when keyboard visible */}
-          <View style={[styles.characterArea, keyboardVisible && styles.characterAreaFaded]}>
-            <CharacterDisplay
-              expression={currentExpression}
-              size="large"
-              showName={false}
-              timeOfDay={timeOfDay}
+      {/* Score Badge */}
+      <View style={styles.scoreBadge}>
+        <Text style={styles.scoreText}>{score}pt</Text>
+        <View style={styles.starsRow}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <Ionicons
+              key={i}
+              name={i < affection ? 'heart' : 'heart-outline'}
+              size={14}
+              color={i < affection ? '#ff4757' : '#ccc'}
             />
-          </View>
-
-          {/* Dialogue Box - Hidden when keyboard visible */}
-          {!keyboardVisible && (
-            <View style={styles.dialogueBox}>
-              <Text style={styles.speakerName}>かおり</Text>
-              <Text style={styles.dialogueText}>
-                「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
-              </Text>
-              {isLoading && (
-                <View style={styles.typingIndicator}>
-                  <ActivityIndicator size="small" color="#ff4757" />
-                  <Text style={styles.typingText}>入力中...</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Chat Input - Positioned absolutely above keyboard */}
-          <View style={[
-            styles.chatInputContainer,
-            { bottom: keyboardVisible ? keyboardHeight + 10 : 30 }
-          ]}>
-            <TextInput
-              ref={inputRef}
-              style={styles.chatInput}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="かおりに話しかける..."
-              placeholderTextColor="#999"
-              maxLength={100}
-              editable={!isLoading}
-              onSubmitEditing={handleSendMessage}
-              returnKeyType="send"
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-              onPress={handleSendMessage}
-              disabled={!inputText.trim() || isLoading}
-            >
-              <Ionicons name="send" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Side Menu */}
-          <Animated.View
-            style={[
-              styles.sideMenu,
-              { transform: [{ translateX: slideAnim }] },
-            ]}
-          >
-            <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>メニュー</Text>
-            </View>
-            {menuItems.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.menuItem}
-                onPress={() => {
-                  toggleMenu();
-                  router.push(item.route as any);
-                }}
-              >
-                <Ionicons name={item.icon as any} size={24} color="#333" />
-                <Text style={styles.menuLabel}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </Animated.View>
-
-          {/* Menu Overlay for closing */}
-          {menuOpen && (
-            <TouchableOpacity
-              style={styles.menuOverlay}
-              activeOpacity={1}
-              onPress={toggleMenu}
-            />
-          )}
+          ))}
         </View>
       </View>
+
+      {/* Character Layer - Positioned absolutely, centered horizontally, anchored to bottom */}
+      <View style={[styles.characterLayer, keyboardVisible && styles.characterLayerFaded]}>
+        <CharacterDisplay expression={currentExpression} />
+      </View>
+
+      {/* Bottom UI - Dialogue box and chat input, fixed at bottom */}
+      <View style={[
+        styles.bottomUI,
+        { paddingBottom: keyboardVisible ? keyboardHeight : 34 }
+      ]}>
+        {/* Dialogue Box */}
+        {!keyboardVisible && (
+          <View style={styles.dialogueBox}>
+            <Text style={styles.speakerName}>かおり</Text>
+            <Text style={styles.dialogueText} numberOfLines={4}>
+              「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
+            </Text>
+            {isLoading && (
+              <View style={styles.typingIndicator}>
+                <ActivityIndicator size="small" color="#ff4757" />
+                <Text style={styles.typingText}>入力中...</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Chat Input */}
+        <View style={styles.chatInputContainer}>
+          <TextInput
+            ref={inputRef}
+            style={styles.chatInput}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="かおりに話しかける..."
+            placeholderTextColor="#999"
+            maxLength={100}
+            editable={!isLoading}
+            onSubmitEditing={handleSendMessage}
+            returnKeyType="send"
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
+            onPress={handleSendMessage}
+            disabled={!inputText.trim() || isLoading}
+          >
+            <Ionicons name="send" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Side Menu */}
+      <Animated.View
+        style={[
+          styles.sideMenu,
+          { transform: [{ translateX: slideAnim }] },
+        ]}
+      >
+        <View style={styles.menuHeader}>
+          <Text style={styles.menuTitle}>メニュー</Text>
+        </View>
+        {menuItems.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.menuItem}
+            onPress={() => {
+              toggleMenu();
+              router.push(item.route as any);
+            }}
+          >
+            <Ionicons name={item.icon as any} size={24} color="#333" />
+            <Text style={styles.menuLabel}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </Animated.View>
+
+      {/* Menu Overlay for closing */}
+      {menuOpen && (
+        <TouchableOpacity
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={toggleMenu}
+        />
+      )}
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      {backgroundImage ? (
+        <ImageBackground
+          source={backgroundImage}
+          style={styles.background}
+          resizeMode="cover"
+        >
+          {renderContent()}
+        </ImageBackground>
+      ) : (
+        <View style={[styles.background, { backgroundColor: fallbackColor }]}>
+          {renderContent()}
+        </View>
+      )}
     </View>
   );
 }
@@ -397,7 +429,10 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  nightOverlay: {
+    backgroundColor: 'rgba(0, 0, 30, 0.4)',
   },
   statusBar: {
     flexDirection: 'row',
@@ -443,22 +478,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 4,
   },
-  characterArea: {
-    flex: 1,
-    justifyContent: 'center',
+  locationBadge: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    backgroundColor: 'rgba(255, 71, 87, 0.9)',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 10,
   },
-  characterAreaFaded: {
-    opacity: 0.4,
+  locationText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  distanceText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 10,
+    marginLeft: 6,
+  },
+  // VN Standard Layout - Character as background layer, UI overlays on top
+  characterLayer: {
+    position: 'absolute',
+    bottom: 220, // Position above the bottom UI area
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  characterLayerFaded: {
+    opacity: 0.3,
+  },
+  bottomUI: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 10,
   },
   dialogueBox: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    marginHorizontal: 20,
-    marginBottom: 100, // Space for chat input
     borderRadius: 15,
-    padding: 20,
-    minHeight: 100,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -487,12 +559,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   chatInputContainer: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 20,
   },
   chatInput: {
     flex: 1,

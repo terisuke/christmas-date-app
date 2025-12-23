@@ -197,10 +197,7 @@ export default function OpeningScreen() {
       <View style={styles.characterArea}>
         {/* Only show character when Kaori is speaking */}
         {currentStory.speaker === 'かおり' && (
-          <CharacterDisplay
-            expression={currentStory.expression}
-            size="large"
-          />
+          <CharacterDisplay expression={currentStory.expression} />
         )}
       </View>
 

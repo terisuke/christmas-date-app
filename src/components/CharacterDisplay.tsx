@@ -1,28 +1,33 @@
-import React, { Suspense, lazy } from 'react';
-import { View, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
-import Constants from 'expo-constants';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, Platform, Dimensions } from 'react-native';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Character image aspect ratio (width:height = 1333:2000 = 0.6665)
+const CHARACTER_ASPECT_RATIO = 1333 / 2000;
+// Character width at 65% of screen width for proper VN display
+const CHARACTER_WIDTH = SCREEN_WIDTH * 0.65;
+// Height calculated from width to maintain aspect ratio
+const CHARACTER_HEIGHT = CHARACTER_WIDTH / CHARACTER_ASPECT_RATIO;
 
 export type KaoriExpression = 'neutral' | 'happy' | 'shy' | 'surprised' | 'sad' | 'thinking';
 
 interface CharacterDisplayProps {
   expression?: KaoriExpression;
-  size?: 'small' | 'medium' | 'large';
-  showName?: boolean; // Deprecated - name/age/origin should be in monologue, not on character display
-  timeOfDay?: 'morning' | 'afternoon' | 'night';
+  style?: object;
 }
 
-const SIZE_HEIGHT: Record<string, number> = {
-  small: 150,
-  medium: 250,
-  large: 350,
+// Static require - Metro bundler requires compile-time constants
+const CHARACTER_SPRITES: Record<KaoriExpression, any> = {
+  neutral: require('../../assets/characters/kaori_neutral.png'),
+  happy: require('../../assets/characters/kaori_happy.png'),
+  shy: require('../../assets/characters/kaori_shy.png'),
+  surprised: require('../../assets/characters/kaori_surprised.png'),
+  sad: require('../../assets/characters/kaori_sad.png'),
+  thinking: require('../../assets/characters/kaori_thinking.png'),
 };
 
-const TIME_BG: Record<string, string> = {
-  morning: '#E8F4FD',
-  afternoon: '#FFF8E7',
-  night: '#1a1a2e',
-};
-
+// Emoji fallbacks when sprites fail to load
 const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
   neutral: '(._. )',
   happy: '(*^_^*)',
@@ -32,137 +37,75 @@ const EXPRESSION_EMOJI: Record<KaoriExpression, string> = {
   thinking: '(・_・?)',
 };
 
-// VRMは実機のみで動的ロード（シミュレータ/Webではnull）
-const VRMCharacter = Platform.select({
-  ios: lazy(() => import('./VRMCharacter')),
-  android: lazy(() => import('./VRMCharacter')),
-  default: null,
-});
-
-// 実機判定：Expo Go以外のネイティブビルド、または本番環境
-const isPhysicalDevice = (): boolean => {
-  // Web は常にfalse
-  if (Platform.OS === 'web') return false;
-
-  // Expo Go で動作している場合はfalse（シミュレータ/エミュレータの可能性が高い）
-  const isExpoGo = Constants.appOwnership === 'expo';
-  if (isExpoGo) return false;
-
-  // 本番ビルドまたはDevelopment Buildの場合はtrue
-  return true;
-};
-
 export default function CharacterDisplay({
   expression = 'neutral',
-  size = 'medium',
-  showName = false, // Default to false - character info should be in story/monologue
-  timeOfDay = 'afternoon',
+  style,
 }: CharacterDisplayProps) {
-  const height = SIZE_HEIGHT[size];
-  const bgColor = TIME_BG[timeOfDay];
-  const isNight = timeOfDay === 'night';
+  const [imageError, setImageError] = useState(false);
 
-  // VRMを使用するかどうか
-  const useVRM = VRMCharacter && isPhysicalDevice();
+  // Reset imageError when expression changes to allow retry
+  useEffect(() => {
+    setImageError(false);
+  }, [expression]);
+
+  const sprite = CHARACTER_SPRITES[expression];
+
+  // Fallback to emoji if image fails to load
+  if (imageError || !sprite) {
+    return (
+      <View style={[styles.container, style]}>
+        <View style={styles.emojiContainer}>
+          <Text style={styles.expressionEmoji}>{EXPRESSION_EMOJI[expression]}</Text>
+          <Text style={styles.expressionLabel}>{expression}</Text>
+          {Platform.OS === 'web' && (
+            <Text style={styles.webNote}>※Web版はプレビューモード</Text>
+          )}
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.characterContainer, { height, backgroundColor: bgColor }]}>
-        {useVRM ? (
-          <Suspense fallback={<ActivityIndicator size="large" color="#ff4757" />}>
-            <VRMCharacter
-              expression={expression}
-              timeOfDay={timeOfDay}
-              style={{ width: '100%', height: '100%' }}
-            />
-          </Suspense>
-        ) : (
-          <View style={styles.emojiContainer}>
-            <Text style={[styles.expressionEmoji, isNight && styles.emojiNight]}>
-              {EXPRESSION_EMOJI[expression]}
-            </Text>
-            <Text style={[styles.expressionLabel, isNight && styles.labelNight]}>
-              {expression}
-            </Text>
-            {Platform.OS === 'web' && (
-              <Text style={styles.webNote}>※Web版はプレビューモード</Text>
-            )}
-          </View>
-        )}
-
-        {showName && (
-          <View style={[styles.nameTag, isNight && styles.nameTagNight]}>
-            <Text style={styles.characterName}>雪村 かおり</Text>
-            <Text style={styles.characterInfo}>17歳 / 小樽出身</Text>
-          </View>
-        )}
-      </View>
+    <View style={[styles.container, style]}>
+      <Image
+        source={sprite}
+        style={styles.characterImage}
+        resizeMode="contain"
+        onError={() => setImageError(true)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    width: CHARACTER_WIDTH,
+    height: CHARACTER_HEIGHT,
     alignItems: 'center',
-    width: '100%',
+    justifyContent: 'flex-end',
   },
-  characterContainer: {
-    width: '100%',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
+  characterImage: {
+    width: CHARACTER_WIDTH,
+    height: CHARACTER_HEIGHT,
   },
   emojiContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   expressionEmoji: {
-    fontSize: 48,
+    fontSize: 64,
     color: '#555',
-  },
-  emojiNight: {
-    color: '#ccc',
   },
   expressionLabel: {
     marginTop: 8,
-    fontSize: 12,
+    fontSize: 14,
     color: '#888',
     textTransform: 'capitalize',
-  },
-  labelNight: {
-    color: '#aaa',
   },
   webNote: {
     marginTop: 12,
     fontSize: 10,
     color: '#999',
-  },
-  nameTag: {
-    position: 'absolute',
-    bottom: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  nameTagNight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-  },
-  characterName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  characterInfo: {
-    fontSize: 10,
-    color: '#666',
-    marginTop: 2,
   },
 });

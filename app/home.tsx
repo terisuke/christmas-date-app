@@ -133,7 +133,7 @@ export default function HomeScreen() {
 
       {/* Character Area */}
       <View style={styles.characterArea}>
-        <CharacterDisplay expression={currentExpression} size="medium" />
+        <CharacterDisplay expression={currentExpression} />
 
         <View style={styles.dialogueBox}>
           <Text style={styles.dialogueText}>「{getKaoriDialogue()}」</Text>
