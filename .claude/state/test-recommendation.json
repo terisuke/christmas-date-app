@@ -1,6 +1,6 @@
 {
-  "timestamp": "2025-12-23T21:00:33Z",
-  "changed_file": "app/spot/[id].tsx",
+  "timestamp": "2025-12-23T21:32:08Z",
+  "changed_file": "app/_layout.tsx",
   "test_command": "npm test",
   "related_test": "",
   "recommendation": "テストの実行を推奨します"

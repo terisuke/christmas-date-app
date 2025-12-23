@@ -53,7 +53,6 @@ function AppContent() {
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="opening" />
-          <Stack.Screen name="home" />
           <Stack.Screen name="main" />
           <Stack.Screen name="status" />
           <Stack.Screen name="settings" />
