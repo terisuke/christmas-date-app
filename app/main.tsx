@@ -26,7 +26,9 @@ import {
   getRecentMessagesForAI,
 } from '../src/services/chatStorage';
 import { useNearestSpot } from '../src/hooks/useNearestSpot';
+import { useActivityTracking } from '../src/hooks/useActivityTracking';
 import { getSpotBackground, getFallbackColor, TimeOfDay } from '../src/constants/backgrounds';
+import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 
@@ -35,7 +37,8 @@ const getKaoriDialogue = (
   timeRemaining: number,
   lastActiveMinutes: number,
   checkInCount: number,
-  expression: KaoriExpression
+  expression: KaoriExpression,
+  stepsToday: number = 0
 ): string => {
   const hoursLeft = timeRemaining / (1000 * 60 * 60);
 
@@ -47,6 +50,17 @@ const getKaoriDialogue = (
   // Idle for 60+ minutes
   if (lastActiveMinutes >= 60) {
     return '...待ってたんだけど...';
+  }
+
+  // Step-based dialogue (priority if walked a lot)
+  if (stepsToday >= 10000) {
+    return '...すごい、なまら歩いたね...わたしも楽しい';
+  }
+  if (stepsToday >= 5000) {
+    return '...けっこう歩いた...足、大丈夫？';
+  }
+  if (stepsToday >= 2000) {
+    return '...いい感じに歩けてるね...';
   }
 
   // Expression-based dialogue
@@ -78,10 +92,24 @@ export default function MainScreen() {
     checkInCount,
     chatCount,
     incrementChatCount,
+    addScore,
   } = useGame();
 
-  // GPS-based location tracking
-  const { nearestSpot, timeOfDay: gpsTimeOfDay, locationEnabled } = useNearestSpot();
+  // GPS-based location tracking with approach detection
+  const {
+    nearestSpot,
+    timeOfDay: gpsTimeOfDay,
+    locationEnabled,
+    isApproaching,
+    isInCheckInRange,
+    justEnteredApproachZone,
+    justEnteredCheckInZone,
+    clearApproachFlag,
+    clearCheckInFlag,
+  } = useNearestSpot();
+
+  // Activity tracking (steps, distance)
+  const { metrics, isTracking, startTracking } = useActivityTracking();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentExpression, setCurrentExpression] = useState<KaoriExpression>('neutral');
@@ -102,6 +130,22 @@ export default function MainScreen() {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
+  // Step bonus animation state
+  const [lastStepBonus, setLastStepBonus] = useState(0);
+  const [showStepBonus, setShowStepBonus] = useState(false);
+  const stepBonusAnim = useRef(new Animated.Value(0)).current;
+
+  // Chat bonus animation state
+  const [chatBonus, setChatBonus] = useState(0);
+  const [showChatBonus, setShowChatBonus] = useState(false);
+  const chatBonusAnim = useRef(new Animated.Value(0)).current;
+
+  // Time-based bonus/penalty state
+  const [timeBonus, setTimeBonus] = useState(0);
+  const [showTimeBonus, setShowTimeBonus] = useState(false);
+  const timeBonusAnim = useRef(new Animated.Value(0)).current;
+  const lastTimeBonusRef = useRef(Date.now());
+
   // Load chat history on mount
   useEffect(() => {
     const loadHistory = async () => {
@@ -118,6 +162,147 @@ export default function MainScreen() {
     };
     loadHistory();
   }, []);
+
+  // Start activity tracking on mount
+  useEffect(() => {
+    if (!isTracking) {
+      startTracking();
+    }
+  }, [isTracking, startTracking]);
+
+  // Step bonus animation (every 100 steps = +1pt)
+  const prevStepsRef = useRef(0);
+  useEffect(() => {
+    const currentSteps = metrics.steps;
+    const prevSteps = prevStepsRef.current;
+
+    // Check if we crossed a 100-step milestone
+    const prevMilestone = Math.floor(prevSteps / 100);
+    const currentMilestone = Math.floor(currentSteps / 100);
+
+    if (currentMilestone > prevMilestone && prevSteps > 0) {
+      const bonusPoints = currentMilestone - prevMilestone;
+      setLastStepBonus(bonusPoints);
+      setShowStepBonus(true);
+
+      // Animate the bonus popup
+      stepBonusAnim.setValue(1);
+      Animated.sequence([
+        Animated.timing(stepBonusAnim, {
+          toValue: 1.2,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(stepBonusAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setShowStepBonus(false));
+    }
+
+    prevStepsRef.current = currentSteps;
+  }, [metrics.steps, stepBonusAnim]);
+
+  // Chat bonus animation helper
+  const triggerChatBonus = useCallback((points: number) => {
+    setChatBonus(points);
+    setShowChatBonus(true);
+    addScore(points);
+
+    chatBonusAnim.setValue(1);
+    Animated.sequence([
+      Animated.timing(chatBonusAnim, {
+        toValue: 1.3,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(chatBonusAnim, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShowChatBonus(false));
+  }, [addScore, chatBonusAnim]);
+
+  // Time bonus/penalty animation helper
+  const triggerTimeBonus = useCallback((points: number, isBonus: boolean) => {
+    setTimeBonus(points);
+    setShowTimeBonus(true);
+    addScore(points);
+
+    if (isBonus) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+
+    timeBonusAnim.setValue(1);
+    Animated.sequence([
+      Animated.timing(timeBonusAnim, {
+        toValue: 1.2,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(timeBonusAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShowTimeBonus(false));
+  }, [addScore, timeBonusAnim]);
+
+  // Time-based bonus (active) / penalty (idle)
+  useEffect(() => {
+    const TIME_BONUS_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    const ACTIVE_BONUS_POINTS = 2;
+    const IDLE_PENALTY_POINTS = -1;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastBonus = now - lastTimeBonusRef.current;
+      // Calculate idle time inside interval to get current value
+      const idleMinutes = Math.floor((now - lastActiveTime) / (1000 * 60));
+
+      if (timeSinceLastBonus >= TIME_BONUS_INTERVAL) {
+        if (idleMinutes >= 60) {
+          // Idle penalty: -1pt every 5 minutes when sad/idle
+          triggerTimeBonus(IDLE_PENALTY_POINTS, false);
+        } else {
+          // Active bonus: +2pt every 5 minutes when engaged
+          triggerTimeBonus(ACTIVE_BONUS_POINTS, true);
+        }
+        lastTimeBonusRef.current = now;
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [lastActiveTime, triggerTimeBonus]);
+
+  // Spot approach notifications
+  useEffect(() => {
+    // 200m以内に入った瞬間
+    if (justEnteredApproachZone && nearestSpot) {
+      setCurrentDialogue(`...あ、近くに何かある...？「${nearestSpot.name}」...かな`);
+      setCurrentExpression('thinking');
+      setLastExpressionChange(Date.now());
+      // Light haptic feedback
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      clearApproachFlag();
+    }
+  }, [justEnteredApproachZone, nearestSpot, clearApproachFlag]);
+
+  useEffect(() => {
+    // 50m以内に入った瞬間（チェックイン可能）
+    if (justEnteredCheckInZone && nearestSpot) {
+      setCurrentDialogue(`...ここ、チェックインできそう...「${nearestSpot.name}」`);
+      setCurrentExpression('happy');
+      setLastExpressionChange(Date.now());
+      // Medium haptic feedback
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      clearCheckInFlag();
+    }
+  }, [justEnteredCheckInZone, nearestSpot, clearCheckInFlag]);
 
   // Minimum time between expression changes (30 seconds)
   const EXPRESSION_COOLDOWN = 30 * 1000;
@@ -275,6 +460,14 @@ export default function MainScreen() {
       }
 
       incrementChatCount();
+
+      // Chat bonus: 30% chance when Kaori responds with happy or shy expression
+      const isGoodMood = response.expression === 'happy' || response.expression === 'shy';
+      if (isGoodMood && Math.random() < 0.3) {
+        const bonusPoints = 5 + Math.floor(Math.random() * 6); // 5-10 points
+        triggerChatBonus(bonusPoints);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     } catch (error) {
       console.error('Chat error:', error);
       setCurrentDialogue('...ごめん、今ちょっと...うまく話せなくて...');
@@ -329,10 +522,21 @@ export default function MainScreen() {
 
       {/* Location Badge */}
       {nearestSpot && (
-        <View style={styles.locationBadge}>
+        <View style={[
+          styles.locationBadge,
+          isInCheckInRange && styles.locationBadgeActive
+        ]}>
           <Ionicons name="location" size={14} color="#fff" />
           <Text style={styles.locationText}>{nearestSpot.name}</Text>
           <Text style={styles.distanceText}>{nearestSpot.distance}m</Text>
+          {isInCheckInRange && (
+            <TouchableOpacity
+              style={styles.checkInButton}
+              onPress={() => router.push(`/spot/${nearestSpot.id}` as any)}
+            >
+              <Text style={styles.checkInButtonText}>チェックイン</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -349,6 +553,58 @@ export default function MainScreen() {
             />
           ))}
         </View>
+        {/* Time Bonus/Penalty Animation */}
+        {showTimeBonus && (
+          <Animated.View
+            style={[
+              styles.timeBonusPopup,
+              {
+                opacity: timeBonusAnim,
+                transform: [{ scale: timeBonusAnim }],
+              }
+            ]}
+          >
+            <Text style={[
+              styles.timeBonusText,
+              timeBonus < 0 && styles.timePenaltyText
+            ]}>
+              {timeBonus > 0 ? `⏰ +${timeBonus}pt` : `😢 ${timeBonus}pt`}
+            </Text>
+          </Animated.View>
+        )}
+      </View>
+
+      {/* Steps Badge */}
+      <View style={styles.stepsBadge}>
+        <View style={styles.stepsHeader}>
+          <Ionicons name="footsteps" size={16} color="#4CAF50" />
+          <Text style={styles.stepsText}>{metrics.steps.toLocaleString()}歩</Text>
+        </View>
+        <View style={styles.stepsProgressContainer}>
+          <View
+            style={[
+              styles.stepsProgressBar,
+              { width: `${Math.min(100, (metrics.steps % 1000) / 10)}%` }
+            ]}
+          />
+        </View>
+        <Text style={styles.stepsNextBonus}>
+          次のボーナスまで {1000 - (metrics.steps % 1000)}歩
+        </Text>
+        {/* Step Bonus Animation */}
+        {showStepBonus && (
+          <Animated.View
+            style={[
+              styles.stepBonusPopup,
+              {
+                opacity: stepBonusAnim,
+                transform: [{ scale: stepBonusAnim }],
+              }
+            ]}
+          >
+            <Text style={styles.stepBonusText}>+{lastStepBonus}pt!</Text>
+          </Animated.View>
+        )}
       </View>
 
       {/* Character Layer - Positioned absolutely, centered horizontally, anchored to bottom */}
@@ -366,13 +622,27 @@ export default function MainScreen() {
           <View style={styles.dialogueBox}>
             <Text style={styles.speakerName}>かおり</Text>
             <Text style={styles.dialogueText} numberOfLines={4}>
-              「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression)}」
+              「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression, metrics.steps)}」
             </Text>
             {isLoading && (
               <View style={styles.typingIndicator}>
                 <ActivityIndicator size="small" color="#ff4757" />
                 <Text style={styles.typingText}>入力中...</Text>
               </View>
+            )}
+            {/* Chat Bonus Animation */}
+            {showChatBonus && (
+              <Animated.View
+                style={[
+                  styles.chatBonusPopup,
+                  {
+                    opacity: chatBonusAnim,
+                    transform: [{ scale: chatBonusAnim }],
+                  }
+                ]}
+              >
+                <Text style={styles.chatBonusText}>💕 +{chatBonus}pt!</Text>
+              </Animated.View>
             )}
           </View>
         )}
@@ -516,6 +786,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 4,
   },
+  timeBonusPopup: {
+    position: 'absolute',
+    top: -25,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  timeBonusText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  timePenaltyText: {
+    color: '#ff4757',
+  },
   locationBadge: {
     position: 'absolute',
     top: 100,
@@ -543,6 +831,83 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 10,
     marginLeft: 6,
+  },
+  locationBadgeActive: {
+    backgroundColor: '#4CAF50',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  checkInButton: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    alignSelf: 'center',
+  },
+  checkInButtonText: {
+    color: '#4CAF50',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Steps Badge Styles
+  stepsBadge: {
+    position: 'absolute',
+    top: 155,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 12,
+    padding: 10,
+    minWidth: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 10,
+  },
+  stepsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  stepsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginLeft: 4,
+  },
+  stepsProgressContainer: {
+    height: 6,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginVertical: 4,
+  },
+  stepsProgressBar: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 3,
+  },
+  stepsNextBonus: {
+    fontSize: 10,
+    color: '#666',
+    textAlign: 'center',
+  },
+  stepBonusPopup: {
+    position: 'absolute',
+    top: -20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  stepBonusText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    textShadowColor: 'rgba(255, 255, 255, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   // VN Standard Layout - Character as background layer, UI overlays on top
   characterLayer: {
@@ -595,6 +960,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginLeft: 8,
+  },
+  chatBonusPopup: {
+    position: 'absolute',
+    top: -30,
+    right: 10,
+    backgroundColor: 'rgba(255, 71, 87, 0.95)',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  chatBonusText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   chatInputContainer: {
     flexDirection: 'row',

@@ -12,12 +12,23 @@ interface SpotInfo {
   is_secret: boolean;
 }
 
+// Approach proximity thresholds
+const APPROACH_THRESHOLD_METERS = 200; // Show "approaching" notification
+const CHECKIN_THRESHOLD_METERS = 100;  // Can check in at this distance
+
 interface UseNearestSpotResult {
   nearestSpot: SpotInfo | null;
   timeOfDay: TimeOfDay;
   loading: boolean;
   error: string | null;
   locationEnabled: boolean;
+  // Approach notifications
+  isApproaching: boolean;      // Within 200m of a spot
+  isInCheckInRange: boolean;   // Within 50m (can check in)
+  justEnteredApproachZone: boolean; // Just crossed 200m threshold
+  justEnteredCheckInZone: boolean;  // Just crossed 50m threshold
+  clearApproachFlag: () => void;    // Clear "just entered approach zone" flag
+  clearCheckInFlag: () => void;     // Clear "just entered check-in zone" flag
 }
 
 // Haversine formula to calculate distance between two coordinates (in meters)
@@ -68,6 +79,17 @@ export function useNearestSpot(): UseNearestSpotResult {
   const [error, setError] = useState<string | null>(null);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+
+  // Approach state
+  const [isApproaching, setIsApproaching] = useState(false);
+  const [isInCheckInRange, setIsInCheckInRange] = useState(false);
+  const [justEnteredApproachZone, setJustEnteredApproachZone] = useState(false);
+  const [justEnteredCheckInZone, setJustEnteredCheckInZone] = useState(false);
+
+  // Track previous zone states to detect transitions
+  const prevApproachingRef = useRef(false);
+  const prevCheckInRangeRef = useRef(false);
+  const prevSpotIdRef = useRef<string | null>(null);
 
   // Find nearest spot from current location
   const findNearestSpot = useCallback(
@@ -126,7 +148,7 @@ export function useNearestSpot(): UseNearestSpotResult {
         locationSubscription.current = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.Balanced,
-            distanceInterval: 50, // Update every 50 meters moved
+            distanceInterval: 20, // Update every 20 meters for better approach detection
           },
           (location) => {
             if (isMounted) {
@@ -136,6 +158,31 @@ export function useNearestSpot(): UseNearestSpotResult {
               );
               setNearestSpot(spot);
               setLoading(false);
+
+              // Update approach states
+              const currentlyApproaching = spot !== null && spot.distance <= APPROACH_THRESHOLD_METERS;
+              const currentlyInCheckInRange = spot !== null && spot.distance <= CHECKIN_THRESHOLD_METERS;
+
+              // Detect zone transitions (entering for the first time or different spot)
+              const isNewSpot = spot?.id !== prevSpotIdRef.current;
+              const justEnteredApproach = currentlyApproaching && (!prevApproachingRef.current || isNewSpot);
+              const justEnteredCheckIn = currentlyInCheckInRange && (!prevCheckInRangeRef.current || isNewSpot);
+
+              setIsApproaching(currentlyApproaching);
+              setIsInCheckInRange(currentlyInCheckInRange);
+
+              // Set "just entered" flags - these will be reset by the consumer
+              if (justEnteredApproach) {
+                setJustEnteredApproachZone(true);
+              }
+              if (justEnteredCheckIn) {
+                setJustEnteredCheckInZone(true);
+              }
+
+              // Update refs for next comparison
+              prevApproachingRef.current = currentlyApproaching;
+              prevCheckInRangeRef.current = currentlyInCheckInRange;
+              prevSpotIdRef.current = spot?.id || null;
             }
           }
         );
@@ -165,12 +212,28 @@ export function useNearestSpot(): UseNearestSpotResult {
     };
   }, [findNearestSpot]);
 
+  // Function to clear "just entered" flags after consumer has processed them
+  const clearApproachFlag = useCallback(() => {
+    setJustEnteredApproachZone(false);
+  }, []);
+
+  const clearCheckInFlag = useCallback(() => {
+    setJustEnteredCheckInZone(false);
+  }, []);
+
   return {
     nearestSpot,
     timeOfDay,
     loading,
     error,
     locationEnabled,
+    // Approach notifications
+    isApproaching,
+    isInCheckInRange,
+    justEnteredApproachZone,
+    justEnteredCheckInZone,
+    clearApproachFlag,
+    clearCheckInFlag,
   };
 }
 
