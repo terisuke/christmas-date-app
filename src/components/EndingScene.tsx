@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { EndingData } from '../constants/endings';
 import CharacterDisplay from './CharacterDisplay';
 import { ENDING_BACKGROUND, getEndingCG } from '../constants/backgrounds';
+import { CHARACTER_BOTTOM, TEXT_AREA_HEIGHTS, Z_INDEX } from '../constants/vnLayout';
 import { logDialogue, logNarration } from '../services/textLogStorage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -469,14 +470,14 @@ const styles = StyleSheet.create({
   },
   characterLayer: {
     position: 'absolute',
-    bottom: 200,
+    bottom: CHARACTER_BOTTOM.ending,
     left: 0,
     right: 0,
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: Z_INDEX.character,
   },
   bottomArea: {
-    zIndex: 10,
+    zIndex: Z_INDEX.text,
   },
   textArea: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 25,
     padding: 20,
     paddingBottom: 40,
-    minHeight: 180,
+    minHeight: TEXT_AREA_HEIGHTS.ending,
   },
   narrationArea: {
     backgroundColor: 'rgba(30, 30, 50, 0.9)',

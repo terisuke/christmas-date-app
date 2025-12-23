@@ -32,6 +32,7 @@ import {
 import { useNearestSpot } from '../src/hooks/useNearestSpot';
 import { useActivityTracking } from '../src/hooks/useActivityTracking';
 import { getSpotBackground, getFallbackColor, TimeOfDay } from '../src/constants/backgrounds';
+import { CHARACTER_BOTTOM, Z_INDEX } from '../src/constants/vnLayout';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -1001,11 +1002,11 @@ const styles = StyleSheet.create({
   // VN Standard Layout - Character as background layer, UI overlays on top
   characterLayer: {
     position: 'absolute',
-    bottom: 180, // Position above the bottom UI area (lowered for better grounding)
+    bottom: CHARACTER_BOTTOM.main, // Position above the bottom UI area
     left: 0,
     right: 0,
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: Z_INDEX.character,
   },
   characterLayerFaded: {
     opacity: 0.3,
@@ -1016,7 +1017,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    zIndex: 10,
+    zIndex: Z_INDEX.text,
   },
   dialogueBox: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',

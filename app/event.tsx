@@ -8,6 +8,7 @@ import CharacterDisplay, { KaoriExpression } from '../src/components/CharacterDi
 import { logDialogue, logChoice } from '../src/services/textLogStorage';
 import { useBGM } from '../src/contexts/BGMContext';
 import { getSpotBackground, getCurrentTimeOfDay, FALLBACK_COLORS } from '../src/constants/backgrounds';
+import { CHARACTER_BOTTOM, TEXT_AREA_HEIGHTS, Z_INDEX } from '../src/constants/vnLayout';
 
 interface Choice {
   text: string;
@@ -408,11 +409,11 @@ const styles = StyleSheet.create({
   // VN Standard Layout - Character as background layer (matching main.tsx)
   characterLayer: {
     position: 'absolute',
-    bottom: 220, // Position above the text area (minHeight: 250)
+    bottom: CHARACTER_BOTTOM.event, // Position above the text area
     left: 0,
     right: 0,
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: Z_INDEX.character,
   },
   spacer: {
     flex: 1,
@@ -422,7 +423,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     padding: 20,
-    minHeight: 250,
+    paddingBottom: 40,
+    minHeight: TEXT_AREA_HEIGHTS.event,
+    zIndex: Z_INDEX.text,
   },
   dialogueContainer: {
     flex: 1,

@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useGame } from '../src/contexts/GameContext';
 import CharacterDisplay from '../src/components/CharacterDisplay';
 import { logDialogue, logNarration } from '../src/services/textLogStorage';
+import { CHARACTER_BOTTOM, TEXT_AREA_HEIGHTS, Z_INDEX } from '../src/constants/vnLayout';
 
 export default function OpeningScreen() {
   const { replay } = useLocalSearchParams<{ replay?: string }>();
@@ -210,13 +211,17 @@ export default function OpeningScreen() {
 
   return (
     <View style={styles.storyContainer}>
-      <View style={styles.characterArea}>
-        {/* Only show character when Kaori is speaking */}
-        {currentStory.speaker === 'かおり' && (
+      {/* Character Layer - absolute positioned above text area */}
+      {currentStory.speaker === 'かおり' && (
+        <View style={styles.characterLayer}>
           <CharacterDisplay expression={currentStory.expression} />
-        )}
-      </View>
+        </View>
+      )}
 
+      {/* Spacer to push text area to bottom */}
+      <View style={styles.spacer} />
+
+      {/* Text Area - anchored to bottom */}
       <View style={[styles.textArea, isNarration && styles.narrationArea]}>
         {currentStory.speaker ? (
           <Text style={styles.speaker}>{currentStory.speaker}</Text>
@@ -292,19 +297,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a2e',
   },
-  characterArea: {
-    flex: 1,
-    justifyContent: 'flex-start',
+  // VN Standard Layout - Character as background layer
+  characterLayer: {
+    position: 'absolute',
+    bottom: CHARACTER_BOTTOM.opening,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    paddingTop: 80,
-    overflow: 'hidden',
+    zIndex: Z_INDEX.character,
+  },
+  spacer: {
+    flex: 1,
   },
   textArea: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     padding: 20,
+    paddingBottom: 40,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    minHeight: 200,
+    minHeight: TEXT_AREA_HEIGHTS.opening,
+    zIndex: Z_INDEX.text,
   },
   narrationArea: {
     backgroundColor: 'rgba(30, 30, 50, 0.9)',
