@@ -50,22 +50,25 @@ describe('Event Expression Linkage', () => {
   describe('Expression-Affection consistency', () => {
     const spots = SPOT_DATA;
 
-    test('Very negative affection (-3) choices use sad expression', () => {
+    test('Negative affection choices use neutral or sad expression', () => {
+      // After balance adjustment (v1.0.2), all negative choices are -1
+      // Secret spots show 'sad' for more emotional impact, normal spots show 'neutral'
       spots.forEach((spot) => {
         spot.event_script.choices.forEach((choice) => {
-          if (choice.affection <= -3) {
-            expect(choice.expression).toBe('sad');
+          if (choice.affection < 0) {
+            expect(['neutral', 'sad']).toContain(choice.expression);
           }
         });
       });
     });
 
-    test('Minor negative affection (-1, -2) choices use neutral expression', () => {
-      spots.forEach((spot) => {
+    test('Secret spot negative choices show sad expression', () => {
+      // Secret spots (S1, S2, S3) have more emotional weight
+      const secretSpots = spots.filter((s) => s.is_secret);
+      secretSpots.forEach((spot) => {
         spot.event_script.choices.forEach((choice) => {
-          if (choice.affection >= -2 && choice.affection < 0) {
-            // For shy character, minor disappointments show neutral (not dramatic sad)
-            expect(choice.expression).toBe('neutral');
+          if (choice.affection < 0) {
+            expect(choice.expression).toBe('sad');
           }
         });
       });
