@@ -42,3 +42,11 @@ coverage/
 # generated native folders
 /ios
 /android
+
+# Claude Code state files
+.claude/
+.claude-code-harness/
+.claude-code-harness-version
+
+# Firebase debug
+firebase-debug.log

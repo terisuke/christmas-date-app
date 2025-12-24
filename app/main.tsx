@@ -37,6 +37,18 @@ import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 
+// Debounce utility for chat history saving
+function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
 // Kaori dialogue based on state
 const getKaoriDialogue = (
   timeRemaining: number,
@@ -351,6 +363,12 @@ export default function MainScreen() {
     return () => clearInterval(interval);
   }, [lastActiveTime]);
 
+  // Memoize default dialogue to prevent recalculation on every render
+  const defaultDialogue = useMemo(
+    () => getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression, metrics.steps),
+    [timeRemaining, lastActiveMinutes, checkInCount, currentExpression, metrics.steps]
+  );
+
   // BGM management based on game state
   useEffect(() => {
     const hoursLeft = timeRemaining / (1000 * 60 * 60);
@@ -448,14 +466,14 @@ export default function MainScreen() {
 
   // Log dialogue to text log when it changes
   useEffect(() => {
-    const dialogueToLog = currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression, metrics.steps);
+    const dialogueToLog = currentDialogue || defaultDialogue;
 
     // Only log if dialogue changed and is not empty
     if (dialogueToLog && dialogueToLog !== lastLoggedDialogue.current) {
       lastLoggedDialogue.current = dialogueToLog;
       logDialogue('かおり', dialogueToLog, currentExpression, 'main');
     }
-  }, [currentDialogue, currentExpression, timeRemaining, lastActiveMinutes, checkInCount, metrics.steps]);
+  }, [currentDialogue, defaultDialogue, currentExpression]);
 
   // Keyboard listener
   useEffect(() => {
@@ -655,7 +673,11 @@ export default function MainScreen() {
         )}
       </View>
 
-      {/* Steps Badge */}
+      {/* Steps Badge
+       * Note: UI displays progress toward 1000 steps for visual engagement,
+       * but actual bonus (+1pt) is awarded every 100 steps (see step bonus animation effect).
+       * This is intentional UX design to encourage walking while providing frequent micro-rewards.
+       */}
       <View style={styles.stepsBadge}>
         <View style={styles.stepsHeader}>
           <Ionicons name="footsteps" size={16} color="#4CAF50" />
@@ -703,7 +725,7 @@ export default function MainScreen() {
           <View style={styles.dialogueBox}>
             <Text style={styles.speakerName}>かおり</Text>
             <Text style={styles.dialogueText} numberOfLines={4}>
-              「{currentDialogue || getKaoriDialogue(timeRemaining, lastActiveMinutes, checkInCount, currentExpression, metrics.steps)}」
+              「{currentDialogue || defaultDialogue}」
             </Text>
             {isLoading && (
               <View style={styles.typingIndicator}>

@@ -5,6 +5,7 @@ import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
 import { tokenCache } from '@clerk/clerk-expo/token-cache';
 import { GameProvider } from '../src/contexts/GameContext';
 import { BGMProvider } from '../src/contexts/BGMContext';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
@@ -40,36 +41,38 @@ function ClerkLoadedWithTimeout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Main app content wrapped in GameProvider and BGMProvider
+// Main app content wrapped in ErrorBoundary, GameProvider and BGMProvider
 function AppContent() {
   return (
-    <BGMProvider>
-      <GameProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="opening" />
-          <Stack.Screen name="main" />
-          <Stack.Screen name="status" />
-          <Stack.Screen name="settings" />
-          <Stack.Screen name="credits" />
-          <Stack.Screen name="map" />
-          <Stack.Screen name="spot/[id]" />
-          <Stack.Screen name="event" />
-          <Stack.Screen name="chat" />
-          <Stack.Screen name="ending" />
-          <Stack.Screen name="gallery" />
-          <Stack.Screen name="gallery-detail" />
-          <Stack.Screen name="achievements" />
-          <Stack.Screen name="share" />
-          <Stack.Screen name="debug" />
-        </Stack>
-      </GameProvider>
-    </BGMProvider>
+    <ErrorBoundary>
+      <BGMProvider>
+        <GameProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="opening" />
+            <Stack.Screen name="main" />
+            <Stack.Screen name="status" />
+            <Stack.Screen name="settings" />
+            <Stack.Screen name="credits" />
+            <Stack.Screen name="map" />
+            <Stack.Screen name="spot/[id]" />
+            <Stack.Screen name="event" />
+            <Stack.Screen name="chat" />
+            <Stack.Screen name="ending" />
+            <Stack.Screen name="gallery" />
+            <Stack.Screen name="gallery-detail" />
+            <Stack.Screen name="achievements" />
+            <Stack.Screen name="share" />
+            <Stack.Screen name="debug" />
+          </Stack>
+        </GameProvider>
+      </BGMProvider>
+    </ErrorBoundary>
   );
 }
 

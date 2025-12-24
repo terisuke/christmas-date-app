@@ -1,6 +1,19 @@
 import { generateKaoriSystemPrompt } from '../constants/character';
 import { KaoriExpression } from '../components/CharacterDisplay';
 
+/**
+ * AI Service for Kaori chat functionality
+ *
+ * SECURITY WARNING:
+ * The API key is exposed in the client bundle via EXPO_PUBLIC_* environment variable.
+ * For production deployment, consider:
+ * 1. Moving AI requests to a backend proxy (Supabase Edge Function, Vercel API Route)
+ * 2. Adding rate limiting on the backend
+ * 3. Implementing user authentication checks
+ *
+ * Current mitigation: OpenRouter dashboard rate limiting
+ */
+
 // OpenRouter API configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -57,17 +70,26 @@ const EMOTION_KEYWORDS: Record<string, KaoriExpression> = {
   '...かな': 'thinking',
 };
 
+// Valid expressions for runtime validation
+const VALID_EXPRESSIONS = new Set<KaoriExpression>([
+  'neutral', 'happy', 'shy', 'surprised', 'sad', 'thinking'
+]);
+
+function isValidExpression(expression: string): expression is KaoriExpression {
+  return VALID_EXPRESSIONS.has(expression as KaoriExpression);
+}
+
 function detectEmotion(text: string): KaoriExpression {
   // First check for explicit emotion tags
   for (const [tag, emotion] of Object.entries(EMOTION_TAGS)) {
-    if (text.includes(tag)) {
+    if (text.includes(tag) && isValidExpression(emotion)) {
       return emotion;
     }
   }
 
   // Fallback to keyword detection
   for (const [keyword, emotion] of Object.entries(EMOTION_KEYWORDS)) {
-    if (text.includes(keyword)) {
+    if (text.includes(keyword) && isValidExpression(emotion)) {
       return emotion;
     }
   }
