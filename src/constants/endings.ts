@@ -28,8 +28,14 @@ export interface EndingData {
 
 /**
  * Get ending type based on affection and score
+ *
+ * DIFFICULTY BALANCE (v1.0.1):
+ * - Full clear (9 spots) = ~1500 points
+ * - Average game = ~1000-1200 points
+ * - TRUE END requires dedication: max affection + high score
+ *
  * Matrix:
- * | Affection | <600      | 600-1199  | 1200-1799 | >=1800   |
+ * | Affection | <1000     | 1000-1799 | 1800-2499 | >=2500   |
  * |-----------|-----------|-----------|-----------|----------|
  * | 1         | BAD_A     | NORMAL_A  | NORMAL_A  | NORMAL_A |
  * | 2         | BAD_B     | NORMAL_B  | GOOD_A    | GOOD_A   |
@@ -40,42 +46,42 @@ export interface EndingData {
  * Note: High affection (4-5) never results in BAD END
  */
 export function getEndingTypeFromMatrix(score: number, affection: number): EndingType {
-  // TRUE END: affection 5 + score >= 1800
-  if (affection === 5 && score >= 1800) return 'TRUE';
+  // TRUE END: affection 5 + score >= 2500 (requires dedication)
+  if (affection === 5 && score >= 2500) return 'TRUE';
 
-  // GOOD END D: affection 4 + score >= 1800
-  if (affection === 4 && score >= 1800) return 'GOOD_D';
+  // GOOD END D: affection 4 + score >= 2500
+  if (affection === 4 && score >= 2500) return 'GOOD_D';
 
-  // GOOD END E: affection 5 + score 1200-1799
-  if (affection === 5 && score >= 1200) return 'GOOD_E';
+  // GOOD END E: affection 5 + score 1800-2499
+  if (affection === 5 && score >= 1800) return 'GOOD_E';
 
-  // GOOD END C: affection 4 + score 1200-1799
-  if (affection === 4 && score >= 1200) return 'GOOD_C';
+  // GOOD END C: affection 4 + score 1800-2499
+  if (affection === 4 && score >= 1800) return 'GOOD_C';
 
-  // GOOD END B: affection 3 + score >= 1200
-  if (affection === 3 && score >= 1200) return 'GOOD_B';
+  // GOOD END B: affection 3 + score >= 1800
+  if (affection === 3 && score >= 1800) return 'GOOD_B';
 
-  // GOOD END A: affection 2 + score >= 1200
-  if (affection === 2 && score >= 1200) return 'GOOD_A';
+  // GOOD END A: affection 2 + score >= 1800
+  if (affection === 2 && score >= 1800) return 'GOOD_A';
 
   // High affection (4-5) with low score still gets NORMAL (not BAD)
   // This rewards players who invested in relationship
   if (affection === 5) return 'NORMAL_E';
   if (affection === 4) return 'NORMAL_D';
 
-  // NORMAL END C: affection 3 + score 600-1199
-  if (affection === 3 && score >= 600) return 'NORMAL_C';
+  // NORMAL END C: affection 3 + score 1000-1799
+  if (affection === 3 && score >= 1000) return 'NORMAL_C';
 
-  // NORMAL END B: affection 2 + score 600-1199
-  if (affection === 2 && score >= 600) return 'NORMAL_B';
+  // NORMAL END B: affection 2 + score 1000-1799
+  if (affection === 2 && score >= 1000) return 'NORMAL_B';
 
-  // NORMAL END A: affection 1 + score 600-1199
-  if (affection === 1 && score >= 600) return 'NORMAL_A';
+  // NORMAL END A: affection 1 + score 1000-1799
+  if (affection === 1 && score >= 1000) return 'NORMAL_A';
 
-  // BAD END B: affection 2-3 + score < 600
+  // BAD END B: affection 2-3 + score < 1000
   if (affection >= 2) return 'BAD_B';
 
-  // BAD END A: affection 1 + score < 600
+  // BAD END A: affection 1 + score < 1000
   return 'BAD_A';
 }
 

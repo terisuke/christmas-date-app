@@ -6,6 +6,33 @@ import CharacterDisplay from '../src/components/CharacterDisplay';
 import { logDialogue, logNarration } from '../src/services/textLogStorage';
 import { CHARACTER_BOTTOM, TEXT_AREA_HEIGHTS, Z_INDEX } from '../src/constants/vnLayout';
 
+// Check if current time is within allowed game start window (JST 7:00-10:00)
+function isWithinGameStartWindow(): boolean {
+  // In development mode, always allow game start
+  if (__DEV__) return true;
+
+  const now = new Date();
+  // Convert to JST (UTC+9)
+  const jstOffset = 9 * 60; // JST is UTC+9
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const jstMinutes = (utcMinutes + jstOffset) % (24 * 60);
+  const jstHour = Math.floor(jstMinutes / 60);
+
+  // Allow start between 7:00 and 10:00 JST
+  return jstHour >= 7 && jstHour < 10;
+}
+
+// Get current JST time as formatted string
+function getJSTTimeString(): string {
+  const now = new Date();
+  const jstOffset = 9 * 60;
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const jstMinutes = (utcMinutes + jstOffset) % (24 * 60);
+  const jstHour = Math.floor(jstMinutes / 60);
+  const jstMin = jstMinutes % 60;
+  return `${jstHour.toString().padStart(2, '0')}:${jstMin.toString().padStart(2, '0')}`;
+}
+
 export default function OpeningScreen() {
   const { replay } = useLocalSearchParams<{ replay?: string }>();
   const isReplay = replay === 'true';
@@ -15,6 +42,24 @@ export default function OpeningScreen() {
   const [showStory, setShowStory] = useState(isReplay);
   const [storyStep, setStoryStep] = useState(0);
   const [isStarting, setIsStarting] = useState(false);
+  const [canStartGame, setCanStartGame] = useState(true);
+  const [currentTime, setCurrentTime] = useState('');
+
+  // Check time restriction on mount and every minute
+  useEffect(() => {
+    // Skip time check for replay mode
+    if (isReplay) return;
+
+    const checkTime = () => {
+      setCanStartGame(isWithinGameStartWindow());
+      setCurrentTime(getJSTTimeString());
+    };
+
+    checkTime();
+    const interval = setInterval(checkTime, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [isReplay]);
 
   const storyTexts = [
     // Scene 1: Prologue introduction
@@ -167,6 +212,37 @@ export default function OpeningScreen() {
   };
 
   if (!showStory) {
+    // Show time restriction message if outside allowed window
+    if (!canStartGame) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.overlay}>
+            <Text style={styles.timeRestrictionIcon}>🌙</Text>
+            <Text style={styles.title}>ゲームを始められません</Text>
+            <Text style={styles.timeRestrictionText}>
+              このゲームは12月24日の朝を体験するゲームです。{'\n'}
+              リアルタイムで進行するため、{'\n'}
+              ゲームを開始できるのは{'\n\n'}
+              <Text style={styles.timeHighlight}>午前7時〜10時（日本時間）</Text>
+              {'\n\n'}の間のみとなっています。
+            </Text>
+            <Text style={styles.currentTimeText}>
+              現在の時刻: {currentTime} (JST)
+            </Text>
+            <Text style={styles.comeBackText}>
+              明日の朝、また来てください
+            </Text>
+            <TouchableOpacity
+              style={styles.backToTitleButton}
+              onPress={() => router.replace('/')}
+            >
+              <Text style={styles.buttonText}>タイトルに戻る</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.container}>
         <KeyboardAvoidingView
@@ -302,6 +378,41 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Time restriction styles
+  timeRestrictionIcon: {
+    fontSize: 60,
+    marginBottom: 20,
+  },
+  timeRestrictionText: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+    lineHeight: 26,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  timeHighlight: {
+    color: '#ffd700',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  currentTimeText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 20,
+  },
+  comeBackText: {
+    fontSize: 18,
+    color: '#ff4757',
+    fontWeight: 'bold',
+    marginBottom: 30,
+  },
+  backToTitleButton: {
+    backgroundColor: '#4a5568',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
   storyContainer: {
     flex: 1,
