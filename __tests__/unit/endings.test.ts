@@ -11,13 +11,12 @@ import {
 describe('Ending System', () => {
   describe('getEndingTypeFromMatrix', () => {
     /**
-     * DIFFICULTY BALANCE (v1.0.1):
-     * - Full clear (9 spots) = ~1500 points
-     * - Average game = ~1000-1200 points
-     * - TRUE END requires dedication: max affection + high score (>=2500)
+     * DIFFICULTY BALANCE (v1.0.2):
+     * Based on realistic point economy analysis:
+     * - Max theoretical score: ~2,350 points
      *
      * Matrix:
-     * | Affection | <1000     | 1000-1799 | 1800-2499 | >=2500   |
+     * | Affection | <800      | 800-1399  | 1400-1999 | >=2000   |
      * |-----------|-----------|-----------|-----------|----------|
      * | 1         | BAD_A     | NORMAL_A  | NORMAL_A  | NORMAL_A |
      * | 2         | BAD_B     | NORMAL_B  | GOOD_A    | GOOD_A   |
@@ -26,106 +25,106 @@ describe('Ending System', () => {
      * | 5         | NORMAL_E  | NORMAL_E  | GOOD_E    | TRUE     |
      */
     describe('TRUE END', () => {
-      it('should return TRUE when affection=5 and score>=2500', () => {
-        expect(getEndingTypeFromMatrix(2500, 5)).toBe('TRUE');
-        expect(getEndingTypeFromMatrix(3000, 5)).toBe('TRUE');
+      it('should return TRUE when affection=5 and score>=2000', () => {
+        expect(getEndingTypeFromMatrix(2000, 5)).toBe('TRUE');
+        expect(getEndingTypeFromMatrix(2200, 5)).toBe('TRUE');
         expect(getEndingTypeFromMatrix(5000, 5)).toBe('TRUE');
       });
 
-      it('should NOT return TRUE when score<2500 even with max affection', () => {
-        expect(getEndingTypeFromMatrix(2499, 5)).not.toBe('TRUE');
-        expect(getEndingTypeFromMatrix(1800, 5)).not.toBe('TRUE');
+      it('should NOT return TRUE when score<2000 even with max affection', () => {
+        expect(getEndingTypeFromMatrix(1999, 5)).not.toBe('TRUE');
+        expect(getEndingTypeFromMatrix(1400, 5)).not.toBe('TRUE');
       });
     });
 
     describe('GOOD ENDS', () => {
-      it('should return GOOD_D when affection=4 and score>=2500', () => {
+      it('should return GOOD_D when affection=4 and score>=2000', () => {
+        expect(getEndingTypeFromMatrix(2000, 4)).toBe('GOOD_D');
         expect(getEndingTypeFromMatrix(2500, 4)).toBe('GOOD_D');
-        expect(getEndingTypeFromMatrix(3000, 4)).toBe('GOOD_D');
       });
 
-      it('should return GOOD_E when affection=5 and score 1800-2499', () => {
-        expect(getEndingTypeFromMatrix(1800, 5)).toBe('GOOD_E');
-        expect(getEndingTypeFromMatrix(2000, 5)).toBe('GOOD_E');
-        expect(getEndingTypeFromMatrix(2499, 5)).toBe('GOOD_E');
+      it('should return GOOD_E when affection=5 and score 1400-1999', () => {
+        expect(getEndingTypeFromMatrix(1400, 5)).toBe('GOOD_E');
+        expect(getEndingTypeFromMatrix(1700, 5)).toBe('GOOD_E');
+        expect(getEndingTypeFromMatrix(1999, 5)).toBe('GOOD_E');
       });
 
-      it('should return GOOD_C when affection=4 and score 1800-2499', () => {
-        expect(getEndingTypeFromMatrix(1800, 4)).toBe('GOOD_C');
-        expect(getEndingTypeFromMatrix(2000, 4)).toBe('GOOD_C');
-        expect(getEndingTypeFromMatrix(2499, 4)).toBe('GOOD_C');
+      it('should return GOOD_C when affection=4 and score 1400-1999', () => {
+        expect(getEndingTypeFromMatrix(1400, 4)).toBe('GOOD_C');
+        expect(getEndingTypeFromMatrix(1700, 4)).toBe('GOOD_C');
+        expect(getEndingTypeFromMatrix(1999, 4)).toBe('GOOD_C');
       });
 
-      it('should return GOOD_B when affection=3 and score>=1800', () => {
-        expect(getEndingTypeFromMatrix(1800, 3)).toBe('GOOD_B');
-        expect(getEndingTypeFromMatrix(2500, 3)).toBe('GOOD_B');
+      it('should return GOOD_B when affection=3 and score>=1400', () => {
+        expect(getEndingTypeFromMatrix(1400, 3)).toBe('GOOD_B');
+        expect(getEndingTypeFromMatrix(2000, 3)).toBe('GOOD_B');
       });
 
-      it('should return GOOD_A when affection=2 and score>=1800', () => {
-        expect(getEndingTypeFromMatrix(1800, 2)).toBe('GOOD_A');
-        expect(getEndingTypeFromMatrix(2500, 2)).toBe('GOOD_A');
+      it('should return GOOD_A when affection=2 and score>=1400', () => {
+        expect(getEndingTypeFromMatrix(1400, 2)).toBe('GOOD_A');
+        expect(getEndingTypeFromMatrix(2000, 2)).toBe('GOOD_A');
       });
     });
 
     describe('NORMAL ENDS', () => {
-      it('should return NORMAL_E when affection=5 and score<1800', () => {
+      it('should return NORMAL_E when affection=5 and score<1400', () => {
         expect(getEndingTypeFromMatrix(0, 5)).toBe('NORMAL_E');
-        expect(getEndingTypeFromMatrix(1000, 5)).toBe('NORMAL_E');
-        expect(getEndingTypeFromMatrix(1799, 5)).toBe('NORMAL_E');
+        expect(getEndingTypeFromMatrix(800, 5)).toBe('NORMAL_E');
+        expect(getEndingTypeFromMatrix(1399, 5)).toBe('NORMAL_E');
       });
 
-      it('should return NORMAL_D when affection=4 and score<1800', () => {
+      it('should return NORMAL_D when affection=4 and score<1400', () => {
         expect(getEndingTypeFromMatrix(0, 4)).toBe('NORMAL_D');
-        expect(getEndingTypeFromMatrix(1000, 4)).toBe('NORMAL_D');
-        expect(getEndingTypeFromMatrix(1799, 4)).toBe('NORMAL_D');
+        expect(getEndingTypeFromMatrix(800, 4)).toBe('NORMAL_D');
+        expect(getEndingTypeFromMatrix(1399, 4)).toBe('NORMAL_D');
       });
 
-      it('should return NORMAL_C when affection=3 and score 1000-1799', () => {
-        expect(getEndingTypeFromMatrix(1000, 3)).toBe('NORMAL_C');
-        expect(getEndingTypeFromMatrix(1799, 3)).toBe('NORMAL_C');
+      it('should return NORMAL_C when affection=3 and score 800-1399', () => {
+        expect(getEndingTypeFromMatrix(800, 3)).toBe('NORMAL_C');
+        expect(getEndingTypeFromMatrix(1399, 3)).toBe('NORMAL_C');
       });
 
-      it('should return NORMAL_B when affection=2 and score 1000-1799', () => {
-        expect(getEndingTypeFromMatrix(1000, 2)).toBe('NORMAL_B');
-        expect(getEndingTypeFromMatrix(1799, 2)).toBe('NORMAL_B');
+      it('should return NORMAL_B when affection=2 and score 800-1399', () => {
+        expect(getEndingTypeFromMatrix(800, 2)).toBe('NORMAL_B');
+        expect(getEndingTypeFromMatrix(1399, 2)).toBe('NORMAL_B');
       });
 
-      it('should return NORMAL_A when affection=1 and score>=1000', () => {
-        expect(getEndingTypeFromMatrix(1000, 1)).toBe('NORMAL_A');
-        expect(getEndingTypeFromMatrix(1799, 1)).toBe('NORMAL_A');
-        expect(getEndingTypeFromMatrix(2500, 1)).toBe('NORMAL_A');
+      it('should return NORMAL_A when affection=1 and score>=800', () => {
+        expect(getEndingTypeFromMatrix(800, 1)).toBe('NORMAL_A');
+        expect(getEndingTypeFromMatrix(1399, 1)).toBe('NORMAL_A');
+        expect(getEndingTypeFromMatrix(2000, 1)).toBe('NORMAL_A');
       });
     });
 
     describe('BAD ENDS', () => {
-      it('should return BAD_B when affection 2-3 and score<1000', () => {
+      it('should return BAD_B when affection 2-3 and score<800', () => {
         expect(getEndingTypeFromMatrix(0, 2)).toBe('BAD_B');
-        expect(getEndingTypeFromMatrix(999, 2)).toBe('BAD_B');
-        expect(getEndingTypeFromMatrix(999, 3)).toBe('BAD_B');
+        expect(getEndingTypeFromMatrix(799, 2)).toBe('BAD_B');
+        expect(getEndingTypeFromMatrix(799, 3)).toBe('BAD_B');
       });
 
-      it('should return BAD_A when affection=1 and score<1000', () => {
+      it('should return BAD_A when affection=1 and score<800', () => {
         expect(getEndingTypeFromMatrix(0, 1)).toBe('BAD_A');
-        expect(getEndingTypeFromMatrix(999, 1)).toBe('BAD_A');
+        expect(getEndingTypeFromMatrix(799, 1)).toBe('BAD_A');
       });
 
       it('should not return BAD for high affection (4-5)', () => {
         // High affection players should never get BAD end
         expect(getEndingTypeFromMatrix(0, 4)).not.toMatch(/^BAD/);
         expect(getEndingTypeFromMatrix(0, 5)).not.toMatch(/^BAD/);
-        expect(getEndingTypeFromMatrix(999, 4)).not.toMatch(/^BAD/);
-        expect(getEndingTypeFromMatrix(999, 5)).not.toMatch(/^BAD/);
+        expect(getEndingTypeFromMatrix(799, 4)).not.toMatch(/^BAD/);
+        expect(getEndingTypeFromMatrix(799, 5)).not.toMatch(/^BAD/);
       });
     });
 
     describe('Edge cases', () => {
       it('should handle exact boundary values', () => {
-        // At exactly 1000
-        expect(getEndingTypeFromMatrix(1000, 1)).toBe('NORMAL_A');
-        // At exactly 1800
-        expect(getEndingTypeFromMatrix(1800, 2)).toBe('GOOD_A');
-        // At exactly 2500
-        expect(getEndingTypeFromMatrix(2500, 5)).toBe('TRUE');
+        // At exactly 800
+        expect(getEndingTypeFromMatrix(800, 1)).toBe('NORMAL_A');
+        // At exactly 1400
+        expect(getEndingTypeFromMatrix(1400, 2)).toBe('GOOD_A');
+        // At exactly 2000
+        expect(getEndingTypeFromMatrix(2000, 5)).toBe('TRUE');
       });
 
       it('should handle very high scores', () => {
