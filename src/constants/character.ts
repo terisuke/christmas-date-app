@@ -268,8 +268,8 @@ export const SPOT_DATA = [
   {
     id: 'A',
     name: '駅前クリスマスマーケット',
-    lat: 33.5897,
-    lng: 130.4207,
+    lat: 33.590025,
+    lng: 130.419355,
     base_point: 100,
     is_secret: false,
     description: 'クリスマスマーケットの中心地。多くの屋台とイルミネーションが楽しめる。',
@@ -286,8 +286,8 @@ export const SPOT_DATA = [
   {
     id: 'B',
     name: '市役所前広場',
-    lat: 33.5902,
-    lng: 130.3987,
+    lat: 33.589924,
+    lng: 130.401138,
     base_point: 100,
     is_secret: false,
     description: '街の中心。ショッピングとグルメが楽しめる。',
@@ -304,8 +304,8 @@ export const SPOT_DATA = [
   {
     id: 'C',
     name: '中央公園',
-    lat: 33.5925,
-    lng: 130.3952,
+    lat: 33.590406,
+    lng: 130.402898,
     base_point: 120,
     is_secret: false,
     description: '静かな公園。かおりとのんびり話すのにぴったり。',
@@ -322,8 +322,8 @@ export const SPOT_DATA = [
   {
     id: 'D',
     name: '旧公会堂',
-    lat: 33.5942,
-    lng: 130.3941,
+    lat: 33.591616,
+    lng: 130.404430,
     base_point: 150,
     is_secret: false,
     description: '歴史ある建物。写真撮影スポットとして人気。',
@@ -339,9 +339,9 @@ export const SPOT_DATA = [
   },
   {
     id: 'E',
-    name: 'ガーデンシティ',
-    lat: 33.5881,
-    lng: 130.3933,
+    name: '大名ガーデンシティ',
+    lat: 33.589502,
+    lng: 130.394775,
     base_point: 100,
     is_secret: false,
     description: 'モダンな商業施設。カフェで一息つこう。',
@@ -376,8 +376,8 @@ export const SPOT_DATA = [
   {
     id: 'S1',
     name: '警固神社',
-    lat: 33.5912,
-    lng: 130.4108,
+    lat: 33.587788,
+    lng: 130.399921,
     base_point: 200,
     is_secret: true,
     available_time: 'day_only', // 日中のみ（6:00-17:59）チェックイン可能
@@ -394,9 +394,9 @@ export const SPOT_DATA = [
   },
   {
     id: 'S2',
-    name: '恋愛成就の神社',
-    lat: 33.5886,
-    lng: 130.3986,
+    name: '櫛田神社',
+    lat: 33.592955,
+    lng: 130.410459,
     base_point: 200,
     is_secret: true,
     available_time: 'always', // 時間制限なし
@@ -413,9 +413,9 @@ export const SPOT_DATA = [
   },
   {
     id: 'S3',
-    name: '屋台街',
-    lat: 33.5945,
-    lng: 130.4045,
+    name: '中洲屋台街',
+    lat: 33.589978,
+    lng: 130.408945,
     base_point: 200,
     is_secret: true,
     available_time: 'night_only', // 18時以降（18:00-5:59）チェックイン可能

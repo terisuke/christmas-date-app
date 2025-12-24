@@ -583,6 +583,7 @@ export default function MainScreen() {
     { icon: 'trophy', label: 'アチーブメント', route: '/achievements' },
     { icon: 'images', label: 'ギャラリー', route: '/gallery' },
     { icon: 'book', label: 'プロローグ', route: '/opening?replay=true' },
+    { icon: 'information-circle', label: 'クレジット', route: '/credits' },
     { icon: 'settings', label: '設定', route: '/settings' },
   ];
 

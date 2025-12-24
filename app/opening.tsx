@@ -211,6 +211,16 @@ export default function OpeningScreen() {
 
   return (
     <View style={styles.storyContainer}>
+      {/* Back Button - only show in replay mode */}
+      {isReplay && (
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>← 戻る</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Character Layer - absolute positioned above text area */}
       {currentStory.speaker === 'かおり' && (
         <View style={styles.characterLayer}>
@@ -296,6 +306,21 @@ const styles = StyleSheet.create({
   storyContainer: {
     flex: 1,
     backgroundColor: '#1a1a2e',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 100,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   // VN Standard Layout - Character as background layer
   characterLayer: {
