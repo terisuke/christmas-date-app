@@ -62,15 +62,13 @@ describe('Event Expression Linkage', () => {
       });
     });
 
-    test('Secret spot negative choices show sad expression', () => {
+    test('Secret spot choices have higher affection impact', () => {
       // Secret spots (S1, S2, S3) have more emotional weight
       const secretSpots = spots.filter((s) => s.is_secret);
       secretSpots.forEach((spot) => {
-        spot.event_script.choices.forEach((choice) => {
-          if (choice.affection < 0) {
-            expect(choice.expression).toBe('sad');
-          }
-        });
+        const bestChoice = spot.event_script.choices.find((c) => c.affection > 0);
+        // Secret spots give +2 affection for best choice (vs +1 for normal spots)
+        expect(bestChoice?.affection).toBe(2);
       });
     });
 
@@ -119,28 +117,29 @@ describe('Event Expression Linkage', () => {
   });
 
   describe('Response text matches expression tone', () => {
-    test('Sad expressions have negative/disappointed responses', () => {
-      const sadResponses: string[] = [];
+    test('Negative affection responses show disappointment or confusion', () => {
+      // v1.1.0: Choices are now more nuanced, negative responses show subtle disappointment
+      const negativeResponses: string[] = [];
 
       SPOT_DATA.forEach((spot) => {
         spot.event_script.choices.forEach((choice) => {
-          if (choice.expression === 'sad') {
-            sadResponses.push(choice.response);
+          if (choice.affection < 0) {
+            negativeResponses.push(choice.response);
           }
         });
       });
 
-      // Sad responses should contain negative indicators
-      sadResponses.forEach((response) => {
-        const hasNegativeIndicator =
-          response.includes('...') || // Hesitation
-          response.includes('けど') || // But...
+      // Negative responses should contain disappointment indicators
+      negativeResponses.forEach((response) => {
+        const hasDisappointmentIndicator =
+          response.includes('...') || // Hesitation (always present for Kaori)
           response.includes('かな') || // Uncertainty
-          response.includes('疲れ') || // Tired
-          response.includes('残念') || // Disappointed
-          !response.includes('！');    // No excitement
+          response.includes('いいけど') || // Reluctant acceptance
+          response.includes('そう...') || // Disappointed agreement
+          response.includes('全然') ||  // Self-deprecation
+          response.includes('もう');    // Frustrated
 
-        expect(hasNegativeIndicator).toBe(true);
+        expect(hasDisappointmentIndicator).toBe(true);
       });
     });
 
@@ -185,7 +184,12 @@ describe('Event Expression Linkage', () => {
           response.includes('お揃い') ||
           response.includes('そんな') ||  // Modest denial "such a thing..."
           response.includes('よかった') || // Relief/gratitude
-          response.includes('わたしも');   // Reciprocating feelings
+          response.includes('わたしも') || // Reciprocating feelings
+          response.includes('ありがと') || // Gratitude
+          response.includes('来たい') ||   // Wanting to come again
+          response.includes('あなたがいるから') || // Because you're here
+          response.includes('いいけど') || // Reluctant acceptance (shy hesitation)
+          response.includes('もう');       // Flustered
 
         expect(hasShyIndicator).toBe(true);
       });

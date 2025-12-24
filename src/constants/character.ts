@@ -267,13 +267,18 @@ export const KAORI_ENDINGS = {
 /**
  * SPOT_DATA - スポット情報とイベントスクリプト
  *
- * 好感度バランス (v1.0.2):
+ * 選択肢設計思想 (v1.1.0):
+ * - どの選択肢も一見「良さそう」に見える
+ * - かおりの性格（シャイ、人見知り、自分のペースが好き）を理解しているかで結果が変わる
+ * - 最良: かおりのペースに寄り添う、さりげない共感
+ * - 中立: 良い意図だが、少し積極的すぎる/かおりにプレッシャー
+ * - 最悪: 良さそうだが、かおりの気持ちを無視している
+ *
+ * 好感度バランス:
  * - 通常スポット(A-F): 最良+1, 普通0, 悪い-1
  * - シークレット(S1-S3): 最良+2, 普通0, 悪い-1
  * - 初期好感度1から最大5に到達するには、9箇所すべてで最良選択が必要
  * - 全スポット最良選択合計: +12 (6通常×+1 + 3シークレット×+2)
- * - 実際に必要な上昇: +4 (1→5)
- * - これにより、途中でミスしても挽回可能だが、TRUE ENDには相応の努力が必要
  */
 export const SPOT_DATA = [
   {
@@ -288,9 +293,12 @@ export const SPOT_DATA = [
       title: '駅前のイルミネーション',
       dialogue: ['...わ', '...すごい、イルミネーション...きれい'],
       choices: [
-        { text: '一緒に写真撮ろう', points: 20, affection: 1, response: '...うん...撮ろう...えへへ', expression: 'shy' as const },
-        { text: '寒くない？', points: 10, affection: 0, response: '...大丈夫...ありがと、気にしてくれて', expression: 'neutral' as const },
-        { text: '次行こうか', points: -20, affection: -1, response: '...え...もう少し見たかったけど...', expression: 'neutral' as const },
+        // 最良: 共感、かおりと同じ気持ちを静かに共有
+        { text: '...きれいだね', points: 20, affection: 1, response: '...うん...きれい...', expression: 'neutral' as const },
+        // 中立: 積極的だがシャイなかおりには少し急
+        { text: '写真撮ろうよ', points: 10, affection: 0, response: '...え...うん、いいけど...', expression: 'shy' as const },
+        // 悪い: 気遣いに見えるが、かおりの感動を遮っている
+        { text: 'どこから見る？', points: -10, affection: -1, response: '...えっと...ここでいい...かな', expression: 'neutral' as const },
       ],
     },
   },
@@ -306,9 +314,12 @@ export const SPOT_DATA = [
       title: '広場のクリスマスツリー',
       dialogue: ['...大きいツリー', '...小樽にもあるけど...こっちの方が...なんか、あったかい感じ'],
       choices: [
-        { text: 'ホットチョコ買ってこようか？', points: 20, affection: 1, response: '...！...うん、飲みたい...ありがと', expression: 'neutral' as const },
-        { text: '北海道のツリーはどんな感じ？', points: 10, affection: 0, response: '...もっと寒くて...雪が積もってて...でも、ここも好き', expression: 'thinking' as const },
-        { text: '人多いね', points: -10, affection: -1, response: '...うん...ちょっと疲れた...', expression: 'neutral' as const },
+        // 最良: かおりの故郷に興味を持つ、彼女の話を聞きたい
+        { text: '小樽のツリー、どんな感じ？', points: 20, affection: 1, response: '...もっと静かで...雪が積もってて...でも、ここも好き', expression: 'thinking' as const },
+        // 中立: 気遣いだが、かおりの話を深掘りしていない
+        { text: '温かいもの飲む？', points: 10, affection: 0, response: '...うん、飲みたい...ありがと', expression: 'neutral' as const },
+        // 悪い: 自分視点の感想、かおりの比較に興味なし
+        { text: 'インスタ映えするね', points: -10, affection: -1, response: '...そう...なのかな...', expression: 'neutral' as const },
       ],
     },
   },
@@ -324,9 +335,12 @@ export const SPOT_DATA = [
       title: '公園のイルミネーション',
       dialogue: ['...ここ、静かでいいね', '...人混み、ちょっと苦手だから...'],
       choices: [
-        { text: 'ベンチで少し休もうか', points: 20, affection: 1, response: '...うん...二人でゆっくり...いいね', expression: 'neutral' as const },
-        { text: '俺も静かな方が好き', points: 10, affection: 0, response: '...そうなんだ...一緒だね', expression: 'neutral' as const },
-        { text: 'もっと賑やかな所行く？', points: -25, affection: -1, response: '...え...わたし、ここがいいんだけど...', expression: 'neutral' as const },
+        // 最良: 短く共感、かおりのペースに完全に合わせる
+        { text: '...うん、いいね', points: 20, affection: 1, response: '...うん...', expression: 'neutral' as const },
+        // 中立: 自分の好みを言う、悪くないが「俺も」が少し自己主張
+        { text: '俺も静かな方が好きかも', points: 10, affection: 0, response: '...そうなんだ...一緒だね', expression: 'neutral' as const },
+        // 悪い: 親切に見えるが勝手に決めている
+        { text: 'じゃあここでゆっくりしよう', points: -10, affection: -1, response: '...うん...いいけど...', expression: 'neutral' as const },
       ],
     },
   },
@@ -342,9 +356,12 @@ export const SPOT_DATA = [
       title: '130体のサンタクロース',
       dialogue: ['...えっ、サンタさんがいっぱい...', '...なまら可愛い...あっ', '...今の聞かなかったことにして...'],
       choices: [
-        { text: 'なまら可愛いね（真似）', points: 25, affection: 1, response: '...！...もう...恥ずかしい...でも、嬉しい...', expression: 'shy' as const },
-        { text: '方言、可愛いと思うよ', points: 15, affection: 0, response: '...そ、そう...？...ありがと...', expression: 'shy' as const },
-        { text: '聞かなかったことにするよ', points: -15, affection: -1, response: '...うん......ありがと...', expression: 'neutral' as const },
+        // 最良: 何も言わない、恥ずかしがってるかおりを追い詰めない
+        { text: '（黙って微笑む）', points: 25, affection: 1, response: '......ありがと...', expression: 'shy' as const },
+        // 中立: 褒めてるが、さらに恥ずかしくさせてしまう
+        { text: '可愛いと思うよ', points: 15, affection: 0, response: '...そ、そう...？...もう...', expression: 'shy' as const },
+        // 悪い: 面白いつもりだが、からかっている感じ
+        { text: 'なまら可愛いね', points: -15, affection: -1, response: '...もう...からかわないで...', expression: 'neutral' as const },
       ],
     },
   },
@@ -360,9 +377,12 @@ export const SPOT_DATA = [
       title: 'モダンな街並み',
       dialogue: ['...おしゃれな場所...', '...都会だね'],
       choices: [
-        { text: 'かおりも街に似合ってるよ', points: 20, affection: 1, response: '...え...そんな...でも、ありがと...', expression: 'shy' as const },
-        { text: '小樽とは違う？', points: 10, affection: 0, response: '...全然違う...でも、どっちも好き', expression: 'neutral' as const },
-        { text: '早く次行こう', points: -20, affection: -1, response: '...もう少し見たかった...', expression: 'neutral' as const },
+        // 最良: かおりの故郷に興味、比較を聞きたい
+        { text: '小樽とどっちが好き？', points: 20, affection: 1, response: '...うーん...どっちも好き...でも、ここは...あなたがいるから...', expression: 'shy' as const },
+        // 中立: 共感だが、かおりの意見を深掘りしていない
+        { text: 'おしゃれだね', points: 10, affection: 0, response: '...うん...ちょっと緊張する...', expression: 'neutral' as const },
+        // 悪い: 直接的すぎて恥ずかしくさせる、かおりの話題を奪う
+        { text: 'かおりの方がおしゃれだよ', points: -10, affection: -1, response: '...え...そんな...わたし全然...', expression: 'neutral' as const },
       ],
     },
   },
@@ -378,9 +398,12 @@ export const SPOT_DATA = [
       title: 'タワーの夜景',
       dialogue: ['...すごい...海が見える', '...こんな景色、初めて見た...'],
       choices: [
-        { text: '今日、楽しかった？', points: 25, affection: 1, response: '...うん...すごく楽しい...ありがと', expression: 'neutral' as const },
-        { text: 'また来ようね', points: 15, affection: 0, response: '...！...うん、約束...', expression: 'shy' as const },
-        { text: '寒いから降りようか', points: -25, affection: -1, response: '...もう少しだけ...見たかったな...', expression: 'neutral' as const },
+        // 最良: 無言で共有、かおりのペースで感動を味わわせる
+        { text: '（黙って隣で景色を見る）', points: 25, affection: 1, response: '............うん', expression: 'neutral' as const },
+        // 中立: 良い言葉だが、かおりの感動の瞬間を遮っている
+        { text: 'きれいだね', points: 15, affection: 0, response: '...うん...すごくきれい...', expression: 'neutral' as const },
+        // 悪い: 確認を求める、かおりにプレッシャーをかける
+        { text: '楽しい？', points: -15, affection: -1, response: '...うん...楽しい...よ', expression: 'neutral' as const },
       ],
     },
   },
@@ -397,9 +420,12 @@ export const SPOT_DATA = [
       title: '神社で初詣の下見',
       dialogue: ['...ここ、有名な神社なんだ', '...お正月、また来れたらいいな...'],
       choices: [
-        { text: '一緒に来よう、約束', points: 30, affection: 2, response: '...！...うん...絶対、約束ね', expression: 'shy' as const },
-        { text: 'お守り買おうか', points: 15, affection: 0, response: '...うん、欲しい...二人でお揃いの...', expression: 'shy' as const },
-        { text: '混んでるから帰ろう', points: -30, affection: -1, response: '...え...せっかく来たのに...', expression: 'sad' as const },
+        // 最良: 柔らかい表現、かおりの願望に寄り添う
+        { text: '...また来れたらいいね', points: 30, affection: 2, response: '...うん...来たい...', expression: 'shy' as const },
+        // 中立: 提案、悪くないが話題を変えている
+        { text: 'お守り見てみる？', points: 15, affection: 0, response: '...うん、見たい...', expression: 'neutral' as const },
+        // 悪い: 良さそうだが、約束を強要している感じ
+        { text: '約束しよう、絶対また来る', points: -20, affection: -1, response: '...え...うん...', expression: 'neutral' as const },
       ],
     },
   },
@@ -416,9 +442,12 @@ export const SPOT_DATA = [
       title: '静かな神社',
       dialogue: ['...街の中にこんな静かな場所があるんだ', '...落ち着く...'],
       choices: [
-        { text: '二人だけの秘密の場所だね', points: 30, affection: 2, response: '...うん...二人だけの...秘密...', expression: 'shy' as const },
-        { text: 'お参りしていこう', points: 15, affection: 0, response: '...うん...何お願いしよう...', expression: 'neutral' as const },
-        { text: '別に普通の神社じゃん', points: -30, affection: -1, response: '...そう...かな...わたしは好きだけど...', expression: 'sad' as const },
+        // 最良: かおりの気持ちに共感
+        { text: '...落ち着くね', points: 30, affection: 2, response: '...うん...ここ、好き...', expression: 'neutral' as const },
+        // 中立: 興味を持ってるが、プライベートな質問
+        { text: '何お願いするの？', points: 15, affection: 0, response: '...え...それは...秘密...', expression: 'shy' as const },
+        // 悪い: ロマンチックだが距離が近すぎ、かおりを困らせる
+        { text: '二人だけの秘密の場所だね', points: -20, affection: -1, response: '...え...そ、そうかな...', expression: 'neutral' as const },
       ],
     },
   },
@@ -435,9 +464,12 @@ export const SPOT_DATA = [
       title: '屋台でラーメン',
       dialogue: ['...屋台...初めて', '...ラーメン、おいしい...', '...この街、好きになっちゃった...かも'],
       choices: [
-        { text: '俺も、かおりが来てくれて嬉しい', points: 30, affection: 2, response: '...わたしも...来てよかった...', expression: 'shy' as const },
-        { text: '替え玉する？', points: 10, affection: 0, response: '...うん、もう一杯食べたい...', expression: 'neutral' as const },
-        { text: '味普通だね', points: -30, affection: -1, response: '...え...わたしはおいしいと思うけど...', expression: 'sad' as const },
+        // 最良: かおりの感想を聞く、彼女中心
+        { text: 'おいしい？', points: 30, affection: 2, response: '...うん...すごくおいしい...また来たい...', expression: 'neutral' as const },
+        // 中立: 自分の気持ちを言う、かおりの告白を受け止めていない
+        { text: '俺も楽しいよ', points: 15, affection: 0, response: '...そう...よかった...', expression: 'neutral' as const },
+        // 悪い: 食べることに集中、かおりの気持ちの告白を無視
+        { text: '替え玉いく？', points: -20, affection: -1, response: '...うん...食べる...', expression: 'neutral' as const },
       ],
     },
   },
