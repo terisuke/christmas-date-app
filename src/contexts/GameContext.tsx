@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase, getCurrentUser, getUserProfile, updateUserScore, createCheckIn } from '../services/supabase';
 import { User, Spot } from '../types';
+import { EndingType, getEndingTypeFromMatrix } from '../constants/endings';
+import { Achievement, AchievementId } from '../constants/achievements';
+import { checkAndUnlockAchievements, UnlockedAchievement } from '../services/achievementStorage';
 
 interface EventScript {
   title: string;
@@ -26,6 +29,7 @@ interface GameContextType {
   checkedInSpots: string[];
   totalSpots: number;
   allClearBonusApplied: boolean;
+  newlyUnlockedAchievements: Achievement[];
 
   setUser: (user: User | null) => void;
   addScore: (points: number) => void;
@@ -36,30 +40,20 @@ interface GameContextType {
   startGame: (nickname: string) => Promise<void>;
   loadGameState: () => Promise<void>;
   resetGame: () => void;
-  getEndingType: () => 'BAD' | 'NORMAL' | 'GOOD' | 'TRUE';
+  getEndingType: () => EndingType;
   checkAllClearBonus: () => void;
+  dismissAchievementNotification: () => void;
+  triggerAchievementCheck: () => Promise<void>;
+  /** Debug only: Adjust time remaining */
+  adjustTimeRemaining: (adjustMs: number) => void;
+  /** Debug only: Force trigger ending by setting time to 0 */
+  forceEnding: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-// Variable game duration based on start time (8-10 hours)
-const calculateGameDuration = (startHour: number): number => {
-  // Morning start (before 10am): 10 hours
-  // Midday start (10am-2pm): 9 hours
-  // Afternoon start (2pm-6pm): 8 hours
-  // Evening start (after 6pm): 6 hours (shorter for late starters)
-  if (startHour < 10) {
-    return 10 * 60 * 60 * 1000; // 10 hours
-  } else if (startHour < 14) {
-    return 9 * 60 * 60 * 1000; // 9 hours
-  } else if (startHour < 18) {
-    return 8 * 60 * 60 * 1000; // 8 hours
-  } else {
-    return 6 * 60 * 60 * 1000; // 6 hours
-  }
-};
-
-const DEFAULT_GAME_DURATION = 8 * 60 * 60 * 1000; // 8 hours default
+// Fixed 9-hour game duration
+const GAME_DURATION = 9 * 60 * 60 * 1000; // 9 hours fixed
 const TOTAL_SPOTS = 9; // 6 normal + 3 secret spots
 const ALL_CLEAR_BONUS = 500;
 
@@ -70,12 +64,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [stepsToday, setStepsToday] = useState(0);
   const [checkInCount, setCheckInCount] = useState(0);
   const [chatCount, setChatCount] = useState(0);
-  const [gameDuration, setGameDuration] = useState(DEFAULT_GAME_DURATION);
-  const [timeRemaining, setTimeRemaining] = useState(DEFAULT_GAME_DURATION);
+  const [gameDuration, setGameDuration] = useState(GAME_DURATION);
+  const [timeRemaining, setTimeRemaining] = useState(GAME_DURATION);
   const [gameStartedAt, setGameStartedAt] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [checkedInSpots, setCheckedInSpots] = useState<string[]>([]);
   const [allClearBonusApplied, setAllClearBonusApplied] = useState(false);
+  const [newlyUnlockedAchievements, setNewlyUnlockedAchievements] = useState<Achievement[]>([]);
 
   // Countdown timer
   useEffect(() => {
@@ -99,6 +94,46 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
     return false;
   }, [allClearBonusApplied, checkedInSpots.length]);
+
+  // Achievement system functions
+  const dismissAchievementNotification = useCallback(() => {
+    setNewlyUnlockedAchievements([]);
+  }, []);
+
+  const triggerAchievementCheck = useCallback(async () => {
+    const gameState = {
+      checkInCount,
+      checkedInSpots,
+      chatCount,
+      steps: stepsToday,
+      affection,
+      score,
+      timeRemaining,
+    };
+
+    const unlocked = await checkAndUnlockAchievements(gameState);
+
+    if (unlocked.length > 0) {
+      // Get full achievement data for newly unlocked
+      const { ACHIEVEMENTS } = await import('../constants/achievements');
+      const newAchievements = unlocked.map(u => ACHIEVEMENTS[u.id]);
+      setNewlyUnlockedAchievements(prev => [...prev, ...newAchievements]);
+
+      // Add bonus points from achievements
+      const bonusTotal = newAchievements.reduce((sum, a) => sum + a.bonusPoints, 0);
+      if (bonusTotal > 0) {
+        setScore(prev => prev + bonusTotal);
+      }
+    }
+  }, [checkInCount, checkedInSpots, chatCount, stepsToday, affection, score, timeRemaining]);
+
+  // Auto-check achievements when key state changes
+  useEffect(() => {
+    // Only check if game is in progress
+    if (gameStartedAt && (checkInCount > 0 || stepsToday > 0 || chatCount > 0)) {
+      triggerAchievementCheck();
+    }
+  }, [checkInCount, stepsToday, chatCount, affection]);
 
   const addScore = useCallback((points: number) => {
     setScore(prev => {
@@ -159,54 +194,63 @@ export function GameProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
-      // Sign in anonymously
-      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
-      if (authError) throw authError;
-
-      const userId = authData.user?.id;
-      if (!userId) throw new Error('No user ID');
-
       const startTime = new Date();
-      const duration = calculateGameDuration(startTime.getHours());
 
-      // Create user profile
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
+      // Try to get current user from Supabase session (if available)
+      const currentUser = await getCurrentUser();
+      const userId = currentUser?.id || `local-${Date.now()}`;
+
+      if (currentUser) {
+        // Create user profile in database
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .upsert({
+            id: userId,
+            nickname,
+            game_started_at: startTime.toISOString(),
+            total_score: 0,
+            affection: 1,
+            steps_today: 0,
+            game_completed: false,
+          })
+          .select()
+          .single();
+
+        if (userError) throw userError;
+        setUser(userData);
+      } else {
+        // Local-only mode (guest mode)
+        setUser({
           id: userId,
           nickname,
+          created_at: startTime.toISOString(),
           game_started_at: startTime.toISOString(),
           total_score: 0,
           affection: 1,
           steps_today: 0,
           game_completed: false,
-        })
-        .select()
-        .single();
+        });
+      }
 
-      if (userError) throw userError;
-
-      setUser(userData);
       setGameStartedAt(startTime);
-      setGameDuration(duration);
+      setGameDuration(GAME_DURATION);
       setScore(0);
       setAffection(1);
       setStepsToday(0);
       setCheckInCount(0);
       setChatCount(0);
-      setTimeRemaining(duration);
+      setTimeRemaining(GAME_DURATION);
       setCheckedInSpots([]);
       setAllClearBonusApplied(false);
     } catch (error) {
       console.error('Start game error:', error);
       // Fallback to local-only mode
       const startTime = new Date();
-      const duration = calculateGameDuration(startTime.getHours());
       setGameStartedAt(startTime);
-      setGameDuration(duration);
-      setTimeRemaining(duration);
+      setGameDuration(GAME_DURATION);
+      setTimeRemaining(GAME_DURATION);
       setUser({
-        id: 'local-user',
+        id: `local-${Date.now()}`,
         nickname,
         created_at: startTime.toISOString(),
         game_started_at: startTime.toISOString(),
@@ -278,20 +322,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setStepsToday(0);
     setCheckInCount(0);
     setChatCount(0);
-    setGameDuration(DEFAULT_GAME_DURATION);
-    setTimeRemaining(DEFAULT_GAME_DURATION);
+    setGameDuration(GAME_DURATION);
+    setTimeRemaining(GAME_DURATION);
     setGameStartedAt(null);
     setCheckedInSpots([]);
     setAllClearBonusApplied(false);
   }, []);
 
-  const getEndingType = useCallback((): 'BAD' | 'NORMAL' | 'GOOD' | 'TRUE' => {
-    // Score thresholds: BAD<600, NORMAL<1200, GOOD<1800, TRUE>=1800
-    if (score < 600) return 'BAD';
-    if (score < 1200) return 'NORMAL';
-    if (score < 1800) return 'GOOD';
-    return 'TRUE';
-  }, [score]);
+  const getEndingType = useCallback((): EndingType => {
+    // Use affection × score matrix for ending determination
+    // See src/constants/endings.ts for full matrix
+    return getEndingTypeFromMatrix(score, affection);
+  }, [score, affection]);
+
+  // Debug functions for time manipulation
+  const adjustTimeRemaining = useCallback((adjustMs: number) => {
+    setTimeRemaining(prev => Math.max(0, prev + adjustMs));
+    // Also adjust gameStartedAt to keep timer in sync
+    setGameStartedAt(prev => {
+      if (!prev) return prev;
+      return new Date(prev.getTime() - adjustMs);
+    });
+  }, []);
+
+  const forceEnding = useCallback(() => {
+    setTimeRemaining(0);
+    // Set gameStartedAt to far in the past to ensure time is up
+    setGameStartedAt(prev => {
+      if (!prev) return new Date(Date.now() - gameDuration);
+      return new Date(Date.now() - gameDuration);
+    });
+  }, [gameDuration]);
 
   return (
     <GameContext.Provider
@@ -309,6 +370,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         checkedInSpots,
         totalSpots: TOTAL_SPOTS,
         allClearBonusApplied,
+        newlyUnlockedAchievements,
         setUser,
         addScore,
         addAffection,
@@ -320,6 +382,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         resetGame,
         getEndingType,
         checkAllClearBonus,
+        dismissAchievementNotification,
+        triggerAchievementCheck,
+        adjustTimeRemaining,
+        forceEnding,
       }}
     >
       {children}

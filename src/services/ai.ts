@@ -1,14 +1,28 @@
-import { KAORI_SYSTEM_PROMPT } from '../constants/character';
+import { generateKaoriSystemPrompt } from '../constants/character';
 import { KaoriExpression } from '../components/CharacterDisplay';
+
+/**
+ * AI Service for Kaori chat functionality
+ *
+ * SECURITY WARNING:
+ * The API key is exposed in the client bundle via EXPO_PUBLIC_* environment variable.
+ * For production deployment, consider:
+ * 1. Moving AI requests to a backend proxy (Supabase Edge Function, Vercel API Route)
+ * 2. Adding rate limiting on the backend
+ * 3. Implementing user authentication checks
+ *
+ * Current mitigation: OpenRouter dashboard rate limiting
+ */
 
 // OpenRouter API configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // Model priority list (fallback order) - Updated Dec 2025
 const MODELS = [
-  'google/gemini-2.5-flash',      // Stable version
-  'x-ai/grok-4-fast',             // Updated to Grok 4
-  'openai/gpt-4.1-nano',          // Fallback
+  'x-ai/grok-4.1-fast',           // Primary - Grok 4.1
+  'openai/gpt-5.1',               // Fallback 1 - GPT 5.1
+  'google/gemini-2.5-flash',      // Fallback 2 - Gemini
+  'anthropic/claude-haiku-4.5',   // Fallback 3 - Claude Haiku
 ];
 
 interface ChatMessage {
@@ -29,6 +43,13 @@ const EMOTION_TAGS: Record<string, KaoriExpression> = {
   '[sad]': 'sad',
   '[thinking]': 'thinking',
   '[neutral]': 'neutral',
+  // New format (AI returns this format based on KAORI_SYSTEM_PROMPT)
+  '[expression:happy]': 'happy',
+  '[expression:shy]': 'shy',
+  '[expression:surprised]': 'surprised',
+  '[expression:sad]': 'sad',
+  '[expression:thinking]': 'thinking',
+  '[expression:neutral]': 'neutral',
 };
 
 const EMOTION_KEYWORDS: Record<string, KaoriExpression> = {
@@ -49,17 +70,26 @@ const EMOTION_KEYWORDS: Record<string, KaoriExpression> = {
   '...かな': 'thinking',
 };
 
+// Valid expressions for runtime validation
+const VALID_EXPRESSIONS = new Set<KaoriExpression>([
+  'neutral', 'happy', 'shy', 'surprised', 'sad', 'thinking'
+]);
+
+function isValidExpression(expression: string): expression is KaoriExpression {
+  return VALID_EXPRESSIONS.has(expression as KaoriExpression);
+}
+
 function detectEmotion(text: string): KaoriExpression {
   // First check for explicit emotion tags
   for (const [tag, emotion] of Object.entries(EMOTION_TAGS)) {
-    if (text.includes(tag)) {
+    if (text.includes(tag) && isValidExpression(emotion)) {
       return emotion;
     }
   }
 
   // Fallback to keyword detection
   for (const [keyword, emotion] of Object.entries(EMOTION_KEYWORDS)) {
-    if (text.includes(keyword)) {
+    if (text.includes(keyword) && isValidExpression(emotion)) {
       return emotion;
     }
   }
@@ -69,24 +99,32 @@ function detectEmotion(text: string): KaoriExpression {
 
 function removeEmotionTags(text: string): string {
   let result = text;
+  // Remove static tags
   for (const tag of Object.keys(EMOTION_TAGS)) {
     result = result.replace(tag, '');
   }
+  // Also remove any [expression:xxx] format with regex for safety
+  result = result.replace(/\[expression:\w+\]/g, '');
   return result.trim();
 }
 
 export async function sendChatMessage(
   userMessage: string,
   conversationHistory: ChatMessage[] = [],
-  apiKey?: string
+  apiKey?: string,
+  affection: number = 1,
+  nickname: string = 'お兄さん'
 ): Promise<AIResponse> {
   // If no API key, return a default response
   if (!apiKey) {
     return getDefaultResponse(userMessage);
   }
 
+  // Generate dynamic system prompt based on affection level
+  const systemPrompt = generateKaoriSystemPrompt(affection, nickname);
+
   const messages: ChatMessage[] = [
-    { role: 'system', content: KAORI_SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     ...conversationHistory,
     { role: 'user', content: userMessage },
   ];
@@ -99,8 +137,8 @@ export async function sendChatMessage(
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://christmas-date-app.local',
-          'X-Title': 'Christmas Date App',
+          'HTTP-Referer': 'https://yukifura-seiya.local',
+          'X-Title': '雪の降らない聖夜に',
         },
         body: JSON.stringify({
           model,
@@ -191,6 +229,48 @@ const DEFAULT_RESPONSES: { pattern: RegExp; responses: { message: string; expres
       { message: '...えっ、わたしも？', expression: 'surprised' },
     ],
   },
+  {
+    pattern: /ありがと|サンキュー|thank/i,
+    responses: [
+      { message: '...ううん、こちらこそ', expression: 'shy' },
+      { message: '...えへへ', expression: 'happy' },
+    ],
+  },
+  {
+    pattern: /どう思う|どうかな|意見/,
+    responses: [
+      { message: '...うーん、いいと思う...かな', expression: 'thinking' },
+      { message: '...えっと...', expression: 'thinking' },
+    ],
+  },
+  {
+    pattern: /北海道|小樽|札幌/,
+    responses: [
+      { message: '...うん、北海道...なまら寒いけど、いいとこ', expression: 'happy' },
+      { message: '...小樽、また来て...あっ', expression: 'shy' },
+    ],
+  },
+  {
+    pattern: /クリスマス|イルミ|ツリー/,
+    responses: [
+      { message: '...きれい...', expression: 'happy' },
+      { message: '...わ、光ってる...', expression: 'happy' },
+    ],
+  },
+  {
+    pattern: /帰り|帰る|さよなら|バイバイ/,
+    responses: [
+      { message: '...うん...もう、そんな時間...', expression: 'sad' },
+      { message: '...あ...', expression: 'sad' },
+    ],
+  },
+  {
+    pattern: /何|なに|どこ|いつ/,
+    responses: [
+      { message: '...えっと...', expression: 'thinking' },
+      { message: '...うーん...', expression: 'thinking' },
+    ],
+  },
 ];
 
 function getDefaultResponse(userMessage: string): AIResponse {
@@ -215,4 +295,16 @@ function getDefaultResponse(userMessage: string): AIResponse {
 
 export function getOpenRouterApiKey(): string | undefined {
   return process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
+}
+
+// Parse Kaori's response to extract message and expression
+export function parseKaoriResponse(response: string): {
+  message: string;
+  expression: 'neutral' | 'happy' | 'shy' | 'thinking';
+} {
+  const expressionMatch = response.match(/\[expression:(neutral|happy|shy|thinking)\]/);
+  const expression = (expressionMatch?.[1] as 'neutral' | 'happy' | 'shy' | 'thinking') || 'neutral';
+  const message = response.replace(/\[expression:\w+\]/g, '').trim();
+
+  return { message, expression };
 }

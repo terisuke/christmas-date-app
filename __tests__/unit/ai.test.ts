@@ -3,7 +3,7 @@
  *
  * Tests for AI chat functionality including model fallback behavior.
  */
-import { sendChatMessage, getOpenRouterApiKey } from '../../src/services/ai';
+import { sendChatMessage, getOpenRouterApiKey, parseKaoriResponse } from '../../src/services/ai';
 
 // Mock fetch for API tests
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
@@ -118,7 +118,13 @@ describe('AI Service', () => {
         status: 429,
       } as Response);
 
-      // Third model succeeds
+      // Third model fails
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      } as Response);
+
+      // Fourth model succeeds
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
@@ -128,7 +134,7 @@ describe('AI Service', () => {
 
       const result = await sendChatMessage('test', [], testApiKey);
 
-      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
       expect(result.message).toBe('...はい');
     });
 
@@ -141,8 +147,8 @@ describe('AI Service', () => {
 
       const result = await sendChatMessage('楽しいね', [], testApiKey);
 
-      // Should fall through to all 3 models then use default
-      expect(mockFetch).toHaveBeenCalledTimes(3);
+      // Should fall through to all 4 models then use default
+      expect(mockFetch).toHaveBeenCalledTimes(4);
       expect(result).toHaveProperty('message');
       expect(result).toHaveProperty('expression');
     });
@@ -427,6 +433,82 @@ describe('AI Service', () => {
       const result = await sendChatMessage('random gibberish xyz123', []);
       expect(result.message.length).toBeGreaterThan(0);
       expect(['neutral', 'thinking']).toContain(result.expression);
+    });
+  });
+
+  describe('parseKaoriResponse', () => {
+    it('should parse response with [expression:neutral] tag', () => {
+      const response = '[expression:neutral]...そうなんだ';
+      const result = parseKaoriResponse(response);
+
+      expect(result.expression).toBe('neutral');
+      expect(result.message).toBe('...そうなんだ');
+    });
+
+    it('should parse response with [expression:happy] tag', () => {
+      const response = '[expression:happy]...うん、楽しいね';
+      const result = parseKaoriResponse(response);
+
+      expect(result.expression).toBe('happy');
+      expect(result.message).toBe('...うん、楽しいね');
+    });
+
+    it('should parse response with [expression:shy] tag', () => {
+      const response = '[expression:shy]...えっと、その...';
+      const result = parseKaoriResponse(response);
+
+      expect(result.expression).toBe('shy');
+      expect(result.message).toBe('...えっと、その...');
+    });
+
+    it('should parse response with [expression:thinking] tag', () => {
+      const response = '[expression:thinking]...うーん、どうしよう';
+      const result = parseKaoriResponse(response);
+
+      expect(result.expression).toBe('thinking');
+      expect(result.message).toBe('...うーん、どうしよう');
+    });
+
+    it('should default to neutral when no expression tag', () => {
+      const response = '...普通のメッセージ';
+      const result = parseKaoriResponse(response);
+
+      expect(result.expression).toBe('neutral');
+      expect(result.message).toBe('...普通のメッセージ');
+    });
+
+    it('should handle expression tag at end of message', () => {
+      const response = '...メッセージ[expression:happy]';
+      const result = parseKaoriResponse(response);
+
+      expect(result.expression).toBe('happy');
+      expect(result.message).toBe('...メッセージ');
+    });
+
+    it('should handle expression tag in middle of message', () => {
+      const response = '...前半[expression:shy]後半';
+      const result = parseKaoriResponse(response);
+
+      expect(result.expression).toBe('shy');
+      expect(result.message).toBe('...前半後半');
+    });
+
+    it('should handle empty message', () => {
+      const response = '[expression:neutral]';
+      const result = parseKaoriResponse(response);
+
+      expect(result.expression).toBe('neutral');
+      expect(result.message).toBe('');
+    });
+
+    it('should return limited expression types', () => {
+      const validExpressions = ['neutral', 'happy', 'shy', 'thinking'];
+
+      validExpressions.forEach(expr => {
+        const response = `[expression:${expr}]test`;
+        const result = parseKaoriResponse(response);
+        expect(validExpressions).toContain(result.expression);
+      });
     });
   });
 });

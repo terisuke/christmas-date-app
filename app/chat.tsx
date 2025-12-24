@@ -32,6 +32,10 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentExpression, setCurrentExpression] = useState<KaoriExpression>('neutral');
+  const [messagesSinceExpressionChange, setMessagesSinceExpressionChange] = useState(0);
+
+  // Only update expression every 2-3 messages (randomly 2 or 3)
+  const EXPRESSION_CHANGE_INTERVAL = 2;
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -75,7 +79,18 @@ export default function ChatScreen() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      setCurrentExpression(response.expression);
+
+      // Only update displayed expression every 2-3 messages
+      const newMessageCount = messagesSinceExpressionChange + 1;
+      const shouldChangeExpression = newMessageCount >= EXPRESSION_CHANGE_INTERVAL + Math.floor(Math.random() * 2);
+
+      if (shouldChangeExpression) {
+        setCurrentExpression(response.expression);
+        setMessagesSinceExpressionChange(0);
+      } else {
+        setMessagesSinceExpressionChange(newMessageCount);
+      }
+
       incrementChatCount();
     } catch (error) {
       console.error('Chat error:', error);
@@ -115,12 +130,7 @@ export default function ChatScreen() {
 
       {/* Character Display */}
       <View style={[styles.characterContainer, timeOfDay === 'night' && styles.characterContainerNight]}>
-        <CharacterDisplay
-          expression={currentExpression}
-          size="small"
-          showName={false}
-          timeOfDay={timeOfDay}
-        />
+        <CharacterDisplay expression={currentExpression} />
       </View>
 
       <KeyboardAvoidingView

@@ -117,9 +117,11 @@ export function useActivityTracking(): UseActivityTrackingResult {
       // Start pedometer tracking
       if (isPedometerAvailable) {
         pedometerSubscription.current = Pedometer.watchStepCount(result => {
+          // result.steps is already the cumulative count since subscription started
+          // Do NOT add to prev.steps, just use the value directly
           setMetrics(prev => ({
             ...prev,
-            steps: prev.steps + result.steps,
+            steps: result.steps,
           }));
         });
       }

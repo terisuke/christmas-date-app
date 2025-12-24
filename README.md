@@ -1,4 +1,4 @@
-# かおりと福岡クリスマス (Christmas Date App)
+# 雪の降らない聖夜に (A Christmas Eve Without Snow)
 
 北海道から来たいとこ「雪村かおり」と過ごす福岡クリスマスデートシミュレーションゲーム
 
@@ -112,7 +112,7 @@ npm run web
 ## プロジェクト構成
 
 ```
-christmas-date-app/
+yukifura-seiya/
 ├── app/                          # 画面コンポーネント (Expo Router)
 │   ├── _layout.tsx              # ルートレイアウト
 │   ├── index.tsx                # タイトル画面

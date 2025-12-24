@@ -1,30 +1,50 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, ImageBackground } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/contexts/GameContext';
 import { SPOT_DATA, KAORI_SPOT_REACTIONS } from '../src/constants/character';
 import CharacterDisplay, { KaoriExpression } from '../src/components/CharacterDisplay';
+import { logDialogue, logChoice } from '../src/services/textLogStorage';
+import { useBGM } from '../src/contexts/BGMContext';
+import { getSpotBackground, getCurrentTimeOfDay, FALLBACK_COLORS } from '../src/constants/backgrounds';
+import { CHARACTER_BOTTOM, TEXT_AREA_HEIGHTS, Z_INDEX } from '../src/constants/vnLayout';
 
 interface Choice {
   text: string;
   points: number;
   affection: number;
+  response: string;
+  expression: KaoriExpression;
 }
+
+type EventPhase = 'dialogue' | 'choices' | 'response' | 'result';
 
 export default function EventScreen() {
   const { spotId } = useLocalSearchParams<{ spotId: string }>();
   const { checkIn } = useGame();
+  const { fadeToTrack } = useBGM();
 
   const spot = SPOT_DATA.find(s => s.id === spotId);
   const reaction = KAORI_SPOT_REACTIONS[spotId || ''];
 
+  // Get spot-specific background based on time of day
+  const timeOfDay = getCurrentTimeOfDay();
+  const spotBackground = getSpotBackground(spotId || null, timeOfDay);
+  const fallbackColor = FALLBACK_COLORS[timeOfDay];
+
+  // Play event BGM on mount
+  useEffect(() => {
+    fadeToTrack('event');
+  }, [fadeToTrack]);
+
+  const [phase, setPhase] = useState<EventPhase>('dialogue');
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
-  const [showChoices, setShowChoices] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<Choice | null>(null);
-  const [showResult, setShowResult] = useState(false);
+  const [responseDisplayedText, setResponseDisplayedText] = useState('');
+  const [isResponseTyping, setIsResponseTyping] = useState(false);
   const [currentExpression, setCurrentExpression] = useState<KaoriExpression>(
     reaction?.expression || 'neutral'
   );
@@ -36,16 +56,16 @@ export default function EventScreen() {
     title: 'イベント',
     dialogue: ['...'],
     choices: [
-      { text: '続ける', points: 0, affection: 0 },
+      { text: '続ける', points: 0, affection: 0, response: '...うん' },
     ],
   };
 
   const dialogues = eventScript.dialogue;
   const choices = eventScript.choices;
 
-  // Typewriter effect
+  // Typewriter effect for dialogue
   useEffect(() => {
-    if (!dialogues[dialogueIndex]) return;
+    if (phase !== 'dialogue' || !dialogues[dialogueIndex]) return;
 
     const fullText = dialogues[dialogueIndex];
     let currentIndex = 0;
@@ -63,7 +83,29 @@ export default function EventScreen() {
     }, 50); // 50ms per character
 
     return () => clearInterval(typingInterval);
-  }, [dialogueIndex, dialogues]);
+  }, [dialogueIndex, dialogues, phase]);
+
+  // Typewriter effect for response
+  useEffect(() => {
+    if (phase !== 'response' || !selectedChoice) return;
+
+    const fullText = selectedChoice.response;
+    let currentIndex = 0;
+    setResponseDisplayedText('');
+    setIsResponseTyping(true);
+
+    const typingInterval = setInterval(() => {
+      if (currentIndex < fullText.length) {
+        setResponseDisplayedText(fullText.substring(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        setIsResponseTyping(false);
+        clearInterval(typingInterval);
+      }
+    }, 50); // 50ms per character
+
+    return () => clearInterval(typingInterval);
+  }, [phase, selectedChoice]);
 
   // Fade in animation
   useEffect(() => {
@@ -74,33 +116,66 @@ export default function EventScreen() {
     }).start();
   }, [fadeAnim]);
 
+  // Log dialogue to text log when dialogue index changes
+  const lastLoggedDialogue = useRef(-1);
+  useEffect(() => {
+    if (phase === 'dialogue' && dialogueIndex !== lastLoggedDialogue.current && dialogues[dialogueIndex]) {
+      lastLoggedDialogue.current = dialogueIndex;
+      const scene = `event_${spotId}`;
+      logDialogue('かおり', dialogues[dialogueIndex], currentExpression, scene);
+    }
+  }, [dialogueIndex, phase, dialogues, spotId, currentExpression]);
+
+  // Log response when shown
+  const hasLoggedResponse = useRef(false);
+  useEffect(() => {
+    if (phase === 'response' && selectedChoice && !hasLoggedResponse.current) {
+      hasLoggedResponse.current = true;
+      const scene = `event_${spotId}`;
+      logDialogue('かおり', selectedChoice.response, selectedChoice.expression, scene);
+    }
+    if (phase !== 'response') {
+      hasLoggedResponse.current = false;
+    }
+  }, [phase, selectedChoice, spotId]);
+
   const handleTextAreaTap = () => {
-    if (isTyping) {
-      // Skip typing animation, show full text immediately
-      setDisplayedText(dialogues[dialogueIndex]);
-      setIsTyping(false);
-    } else if (dialogueIndex < dialogues.length - 1) {
-      // Move to next dialogue
-      setDialogueIndex(dialogueIndex + 1);
-    } else {
-      // Show choices
-      setShowChoices(true);
+    if (phase === 'dialogue') {
+      if (isTyping) {
+        // Skip typing animation, show full text immediately
+        setDisplayedText(dialogues[dialogueIndex]);
+        setIsTyping(false);
+      } else if (dialogueIndex < dialogues.length - 1) {
+        // Move to next dialogue
+        setDialogueIndex(dialogueIndex + 1);
+      } else {
+        // Show choices
+        setPhase('choices');
+      }
+    } else if (phase === 'response') {
+      if (isResponseTyping) {
+        // Skip typing animation, show full response immediately
+        setResponseDisplayedText(selectedChoice?.response || '');
+        setIsResponseTyping(false);
+      } else {
+        // Move to result phase
+        setPhase('result');
+      }
     }
   };
 
   const handleChoiceSelect = async (choice: Choice) => {
     setSelectedChoice(choice);
-    setShowChoices(false);
-    setShowResult(true);
 
-    // Update expression based on choice
-    if (choice.affection >= 2) {
-      setCurrentExpression('happy');
-    } else if (choice.affection === 1) {
-      setCurrentExpression('shy');
-    } else if (choice.affection < 0) {
-      setCurrentExpression('sad');
-    }
+    // Log the player's choice
+    const scene = `event_${spotId}`;
+    logChoice(choice.text, scene);
+
+    // Update expression based on choice's explicit expression setting
+    setCurrentExpression(choice.expression);
+
+    // Move to response phase (show Kaori's reaction first)
+    setPhase('response');
 
     // Save check-in with the selected choice
     const basePoints = spot?.base_point || 100;
@@ -128,22 +203,8 @@ export default function EventScreen() {
     }
   };
 
-  const getKaoriResponse = () => {
-    if (!selectedChoice) return '...';
-
-    if (selectedChoice.affection >= 2) {
-      return '...うん、...嬉しい';
-    } else if (selectedChoice.affection === 1) {
-      return '...あ、...ありがと';
-    } else if (selectedChoice.affection === 0) {
-      return '...うん';
-    } else {
-      return '...そう...';
-    }
-  };
-
   const handleContinue = () => {
-    router.replace('/home');
+    router.replace('/main');
   };
 
   if (!spot) {
@@ -151,7 +212,7 @@ export default function EventScreen() {
       <View style={styles.container}>
         <View style={styles.errorContent}>
           <Text style={styles.errorText}>イベントデータが見つかりません</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/main')}>
             <Text style={styles.backButtonText}>ホームに戻る</Text>
           </TouchableOpacity>
         </View>
@@ -159,22 +220,26 @@ export default function EventScreen() {
     );
   }
 
-  return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      {/* Background with title */}
+  // Render content with or without background image
+  const renderContent = () => (
+    <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+      {/* Title Area */}
       <View style={styles.titleArea}>
         <Text style={styles.eventTitle}>{eventScript.title}</Text>
         <Text style={styles.spotName}>{spot.name}</Text>
       </View>
 
-      {/* Character Area */}
-      <View style={styles.characterArea}>
-        <CharacterDisplay expression={currentExpression} size="large" showName={false} />
+      {/* Character Layer - Positioned absolutely, anchored above text area (matching main.tsx) */}
+      <View style={styles.characterLayer}>
+        <CharacterDisplay expression={currentExpression} />
       </View>
+
+      {/* Spacer to push text area to bottom */}
+      <View style={styles.spacer} />
 
       {/* Text Area */}
       <View style={styles.textArea}>
-        {showResult ? (
+        {phase === 'result' ? (
           // Result screen
           <View style={styles.resultContainer}>
             <Text style={styles.resultMessage}>{getResultMessage()}</Text>
@@ -186,7 +251,7 @@ export default function EventScreen() {
                   styles.resultStatValue,
                   { color: (spot.base_point + (selectedChoice?.points || 0)) >= 0 ? '#4caf50' : '#f44336' }
                 ]}>
-                  +{spot.base_point + (selectedChoice?.points || 0)}pt
+                  {(spot.base_point + (selectedChoice?.points || 0)) >= 0 ? '+' : ''}{spot.base_point + (selectedChoice?.points || 0)}pt
                 </Text>
               </View>
               <View style={styles.resultStatItem}>
@@ -200,34 +265,42 @@ export default function EventScreen() {
               </View>
             </View>
 
-            <View style={styles.kaoriResponseBox}>
-              <Text style={styles.speakerName}>かおり</Text>
-              <Text style={styles.kaoriResponse}>「{getKaoriResponse()}」</Text>
-            </View>
-
             <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
               <Text style={styles.continueButtonText}>続ける</Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-        ) : showChoices ? (
+        ) : phase === 'response' ? (
+          // Response screen - Kaori's reaction after choice
+          <TouchableOpacity
+            style={styles.dialogueContainer}
+            onPress={handleTextAreaTap}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.speakerName}>かおり</Text>
+            <Text style={styles.dialogueText}>「{responseDisplayedText}」</Text>
+            {!isResponseTyping && (
+              <View style={styles.tapIndicator}>
+                <Text style={styles.tapIndicatorText}>タップで結果を見る</Text>
+                <Ionicons name="chevron-down" size={16} color="#999" />
+              </View>
+            )}
+          </TouchableOpacity>
+        ) : phase === 'choices' ? (
           // Choices screen
           <View style={styles.choicesContainer}>
             <Text style={styles.choicesPrompt}>どう返事する？</Text>
             {choices.map((choice, index) => (
               <TouchableOpacity
                 key={index}
-                style={styles.choiceButton}
-                onPress={() => handleChoiceSelect(choice)}
+                style={[
+                  styles.choiceButton,
+                  choice.affection < 0 && styles.choiceButtonNegative
+                ]}
+                onPress={() => handleChoiceSelect(choice as Choice)}
               >
                 <Text style={styles.choiceArrow}>▶</Text>
                 <Text style={styles.choiceText}>{choice.text}</Text>
-                <Text style={[
-                  styles.choicePoints,
-                  { color: choice.points >= 0 ? '#4caf50' : '#f44336' }
-                ]}>
-                  {choice.points >= 0 ? '+' : ''}{choice.points}pt
-                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -253,15 +326,34 @@ export default function EventScreen() {
       </View>
 
       {/* Skip button (only during dialogue) */}
-      {!showResult && !showChoices && (
+      {phase === 'dialogue' && (
         <TouchableOpacity
           style={styles.skipButton}
-          onPress={() => setShowChoices(true)}
+          onPress={() => setPhase('choices')}
         >
           <Text style={styles.skipButtonText}>スキップ</Text>
         </TouchableOpacity>
       )}
     </Animated.View>
+  );
+
+  // Render with ImageBackground if available, otherwise with fallback color
+  if (spotBackground) {
+    return (
+      <ImageBackground
+        source={spotBackground}
+        style={styles.container}
+        resizeMode="cover"
+      >
+        {renderContent()}
+      </ImageBackground>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: fallbackColor }]}>
+      {renderContent()}
+    </View>
   );
 }
 
@@ -269,6 +361,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   errorContent: {
     flex: 1,
@@ -310,18 +406,26 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginTop: 5,
   },
-  characterArea: {
-    flex: 1,
-    justifyContent: 'center',
+  // VN Standard Layout - Character as background layer (matching main.tsx)
+  characterLayer: {
+    position: 'absolute',
+    bottom: CHARACTER_BOTTOM.event, // Position above the text area
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    paddingVertical: 20,
+    zIndex: Z_INDEX.character,
+  },
+  spacer: {
+    flex: 1,
   },
   textArea: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
     padding: 20,
-    minHeight: 250,
+    paddingBottom: 40,
+    minHeight: TEXT_AREA_HEIGHTS.event,
+    zIndex: Z_INDEX.text,
   },
   dialogueContainer: {
     flex: 1,
@@ -366,6 +470,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 10,
+  },
+  choiceButtonNegative: {
+    backgroundColor: '#fff5f5',
+    borderColor: '#ffcdd2',
   },
   choiceArrow: {
     fontSize: 12,
